@@ -427,13 +427,13 @@
     <div class="panel col-8">
       <div class="panel-title">PRICE HISTORY (USD)</div>
       <div class="tf-buttons">
-        <button class="tf-btn" onclick="loadPriceChart(1)">1D</button>
-        <button class="tf-btn active" onclick="loadPriceChart(7)">7D</button>
-        <button class="tf-btn" onclick="loadPriceChart(30)">30D</button>
-        <button class="tf-btn" onclick="loadPriceChart(90)">3M</button>
-        <button class="tf-btn" onclick="loadPriceChart(365)">1Y</button>
-        <button class="tf-btn" onclick="loadPriceChart(1825)">5Y</button>
-        <button class="tf-btn" onclick="loadPriceChart('max')">MAX</button>
+        <button class="tf-btn" onclick="loadPriceChart(1, this)">1D</button>
+        <button class="tf-btn active" onclick="loadPriceChart(7, this)">7D</button>
+        <button class="tf-btn" onclick="loadPriceChart(30, this)">30D</button>
+        <button class="tf-btn" onclick="loadPriceChart(90, this)">3M</button>
+        <button class="tf-btn" onclick="loadPriceChart(365, this)">1Y</button>
+        <button class="tf-btn" onclick="loadPriceChart(1825, this)">5Y</button>
+        <button class="tf-btn" onclick="loadPriceChart('max', this)">MAX</button>
       </div>
       <canvas id="priceChart" height="220"></canvas>
     </div>
@@ -694,23 +694,78 @@ function makeChart(id, config) {
 }
 
 // ═══════════════════════════════════════
-// API: COINGECKO
+// COINGECKO RATE-LIMIT QUEUE
+// Free tier: ~30 req/min → enforce 1 req per 2.5s max
+// ═══════════════════════════════════════
+const CG_BASE = 'https://api.coingecko.com/api/v3';
+let cgQueue = Promise.resolve();
+let cgBackoffMs = 0;
+const CG_MIN_GAP = 2500; // ms between requests
+
+function cgFetch(path) {
+  cgQueue = cgQueue.then(() => new Promise(resolve => setTimeout(resolve, CG_MIN_GAP + cgBackoffMs)));
+  return cgQueue.then(async () => {
+    const res = await fetch(CG_BASE + path);
+    if (res.status === 429) {
+      cgBackoffMs = Math.min((cgBackoffMs || 5000) * 2, 60000);
+      console.warn(`CoinGecko 429 — backing off ${cgBackoffMs/1000}s`);
+      await new Promise(r => setTimeout(r, cgBackoffMs));
+      throw new Error('rate_limited');
+    }
+    cgBackoffMs = 0; // reset backoff on success
+    return res.json();
+  });
+}
+
+// sessionStorage cache helper
+const MARKET_CACHE_KEY = 'btc_market_cache';
+const MARKET_CACHE_TTL = 90 * 1000; // 90 seconds
+
+function getCachedMarket() {
+  try {
+    const raw = sessionStorage.getItem(MARKET_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts < MARKET_CACHE_TTL) return data;
+  } catch(e) {}
+  return null;
+}
+function setCachedMarket(data) {
+  try { sessionStorage.setItem(MARKET_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+}
+
+// Chart data cache: keyed by days, 5-min TTL
+const chartCache = {};
+const CHART_CACHE_TTL = 5 * 60 * 1000;
+
+// ═══════════════════════════════════════
+// API: COINGECKO — market + global merged
+// One batched cycle instead of two separate calls
 // ═══════════════════════════════════════
 let lastBtcPrice = null;
 
 async function fetchCoinGeckoMarket() {
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
-    const data = await res.json();
-    if (!data || !data[0]) return;
+  // Try cache first — render immediately, then refresh in background
+  const cached = getCachedMarket();
+  if (cached) { applyMarketData(cached); }
 
+  try {
+    const data = await cgFetch('/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
+    if (!data || !data[0]) return;
+    setCachedMarket(data);
+    applyMarketData(data);
+  } catch(e) {
+    if (e.message !== 'rate_limited') console.error('CoinGecko market error:', e);
+  }
+}
+
+function applyMarketData(data) {
     const btc = data[0];
     const price = btc.current_price;
     const change24 = btc.price_change_percentage_24h;
     const change7 = btc.price_change_percentage_7d_in_currency;
     const change30 = btc.price_change_percentage_30d_in_currency;
 
-    // Big price
     const bigPrice = document.getElementById('big-price');
     if (bigPrice) {
       const wasPrice = lastBtcPrice;
@@ -724,17 +779,10 @@ async function fetchCoinGeckoMarket() {
     lastBtcPrice = price;
 
     const changeEl = document.getElementById('price-change');
-    if (changeEl) {
-      changeEl.textContent = fmt.pct(change24);
-      setColor(changeEl, change24);
-    }
+    if (changeEl) { changeEl.textContent = fmt.pct(change24); setColor(changeEl, change24); }
 
     const absEl = document.getElementById('price-change-abs');
-    if (absEl) {
-      const abs = btc.price_change_24h;
-      absEl.textContent = '(' + fmt.price(abs) + ')';
-      setColor(absEl, change24);
-    }
+    if (absEl) { absEl.textContent = '(' + fmt.price(btc.price_change_24h) + ')'; setColor(absEl, change24); }
 
     setText('price-high', fmt.price(btc.high_24h));
     setText('price-low', fmt.price(btc.low_24h));
@@ -744,16 +792,14 @@ async function fetchCoinGeckoMarket() {
     setText('circulating', (btc.circulating_supply / 1e6).toFixed(3) + 'M');
     setText('mkt-rank', '#' + btc.market_cap_rank);
 
-    const change7El = document.getElementById('change7d');
-    if (change7El) { change7El.textContent = fmt.pct(change7); setColor(change7El, change7); }
-
-    const change30El = document.getElementById('change30d');
-    if (change30El) { change30El.textContent = fmt.pct(change30); setColor(change30El, change30); }
+    const c7el = document.getElementById('change7d');
+    if (c7el) { c7el.textContent = fmt.pct(change7); setColor(c7el, change7); }
+    const c30el = document.getElementById('change30d');
+    if (c30el) { c30el.textContent = fmt.pct(change30); setColor(c30el, change30); }
 
     setText('ath-metric', fmt.price(btc.ath));
     setText('ath-date', new Date(btc.ath_date).toLocaleDateString());
 
-    // Supply
     const mined = btc.circulating_supply;
     const pct = (mined / 21000000 * 100).toFixed(2);
     const supplyBar = document.getElementById('supply-bar');
@@ -761,82 +807,64 @@ async function fetchCoinGeckoMarket() {
     setText('supply-mined', (mined/1e6).toFixed(3) + 'M');
     setText('supply-left', ((21000000 - mined)/1e6).toFixed(3) + 'M');
 
-    // Supply donut
     makeChart('supplyDonut', {
       type: 'doughnut',
-      data: {
-        labels: ['Mined', 'Unmined'],
-        datasets: [{
-          data: [mined, 21000000 - mined],
-          backgroundColor: ['rgba(247,147,26,0.8)', 'rgba(247,147,26,0.08)'],
-          borderColor: ['rgba(247,147,26,1)', 'rgba(247,147,26,0.2)'],
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        cutout: '70%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: { label: c => c.label + ': ' + (c.raw/1e6).toFixed(2) + 'M BTC' }
-          }
-        }
-      }
+      data: { labels: ['Mined', 'Unmined'], datasets: [{ data: [mined, 21000000 - mined], backgroundColor: ['rgba(247,147,26,0.8)','rgba(247,147,26,0.08)'], borderColor: ['rgba(247,147,26,1)','rgba(247,147,26,0.2)'], borderWidth: 1 }] },
+      options: { responsive: true, cutout: '70%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.label + ': ' + (c.raw/1e6).toFixed(2) + 'M BTC' } } } }
     });
 
-    // Ticker
     ['t-price','t-price2'].forEach(id => setText(id, fmt.price(price)));
-    const chStr = fmt.pct(change24);
-    ['t-change','t-change2'].forEach(id => setText(id, chStr));
-    const mcStr = fmt.compact(btc.market_cap);
-    ['t-mcap','t-mcap2'].forEach(id => setText(id, mcStr));
-    const volStr = fmt.compact(btc.total_volume);
-    ['t-vol','t-vol2'].forEach(id => setText(id, volStr));
+    ['t-change','t-change2'].forEach(id => setText(id, fmt.pct(change24)));
+    ['t-mcap','t-mcap2'].forEach(id => setText(id, fmt.compact(btc.market_cap)));
+    ['t-vol','t-vol2'].forEach(id => setText(id, fmt.compact(btc.total_volume)));
 
-    // Global table
     buildGlobalTable(data);
-
-    // Dominance chart
     buildDominanceChart(data);
-
-    // Exchange volume mock (top exchanges with CoinGecko aggregate data)
     buildExchangeVolume(data);
-
     document.getElementById('last-updated').textContent = 'UPDATED ' + new Date().toLocaleTimeString();
-  } catch (e) {
-    console.error('CoinGecko market error:', e);
-  }
 }
 
 // ═══════════════════════════════════════
-// COINGECKO GLOBAL
+// COINGECKO GLOBAL — merged into market cycle
+// Only called separately on first load (staggered)
 // ═══════════════════════════════════════
 async function fetchGlobal() {
   try {
-    const res = await fetch('https://api.coingecko.com/api/v3/global');
-    const { data } = await res.json();
-    if (!data) return;
-    const dom = data.market_cap_percentage.btc?.toFixed(1) + '%';
+    const data = await cgFetch('/global');
+    if (!data?.data) return;
+    const dom = data.data.market_cap_percentage.btc?.toFixed(1) + '%';
     setText('dominance', dom);
     ['t-dom','t-dom2'].forEach(id => setText(id, dom));
   } catch(e) {}
 }
 
 // ═══════════════════════════════════════
-// PRICE CHART
+// PRICE CHART — cached per timeframe, 5-min TTL
 // ═══════════════════════════════════════
 let activeDays = 7;
-async function loadPriceChart(days) {
+async function loadPriceChart(days, triggerEl) {
   activeDays = days;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  event?.target?.classList?.add('active');
+  if (triggerEl) triggerEl.classList.add('active');
+  else document.querySelectorAll('.tf-btn')[1]?.classList.add('active'); // default 7D
+
+  // Serve from cache if fresh
+  const cacheKey = 'chart_' + days;
+  const cached = chartCache[cacheKey];
+  if (cached && Date.now() - cached.ts < CHART_CACHE_TTL) {
+    renderPriceCharts(cached.data, days);
+    return;
+  }
 
   try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
-    const data = await res.json();
-    if (!data.prices) return;
+    const data = await cgFetch(`/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
+    if (!data || !data.prices) return;
+    chartCache['chart_' + days] = { ts: Date.now(), data };
+    renderPriceCharts(data, days);
+  } catch(e) { if (e.message !== 'rate_limited') console.error('Price chart error:', e); }
+}
 
+function renderPriceCharts(data, days) {
     const labels = data.prices.map(p => {
       const d = new Date(p[0]);
       return days <= 1 ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
@@ -847,7 +875,6 @@ async function loadPriceChart(days) {
     const volumes = data.total_volumes ? data.total_volumes.map(v => v[1]) : [];
     const mcaps = data.market_caps ? data.market_caps.map(m => m[1]) : [];
 
-    // Gradient
     const pCtx = document.getElementById('priceChart')?.getContext('2d');
     if (!pCtx) return;
     const grad = pCtx.createLinearGradient(0, 0, 0, 400);
@@ -856,67 +883,22 @@ async function loadPriceChart(days) {
 
     makeChart('priceChart', {
       type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'BTC Price',
-          data: prices,
-          borderColor: BTC_ORANGE,
-          borderWidth: 1.5,
-          backgroundColor: grad,
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-        }]
-      },
+      data: { labels, datasets: [{ label: 'BTC Price', data: prices, borderColor: BTC_ORANGE, borderWidth: 1.5, backgroundColor: grad, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4 }] },
       options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(10,10,16,0.95)',
-            borderColor: 'rgba(247,147,26,0.3)',
-            borderWidth: 1,
-            titleColor: '#6b5c42',
-            bodyColor: '#f7931a',
-            callbacks: { label: c => fmt.price(c.parsed.y) }
-          }
-        },
-        scales: {
-          x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
-          y: {
-            ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) },
-            grid: { color: 'rgba(247,147,26,0.06)' }
-          }
-        }
+        responsive: true, interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,10,16,0.95)', borderColor: 'rgba(247,147,26,0.3)', borderWidth: 1, titleColor: '#6b5c42', bodyColor: '#f7931a', callbacks: { label: c => fmt.price(c.parsed.y) } } },
+        scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) }, grid: { color: 'rgba(247,147,26,0.06)' } } }
       }
     });
 
-    // Volume chart
     if (volumes.length) {
       makeChart('volumeChart', {
         type: 'bar',
-        data: {
-          labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
-          datasets: [{
-            label: 'Volume',
-            data: volumes.filter((_,i) => i % Math.max(1, Math.floor(volumes.length/30)) === 0),
-            backgroundColor: 'rgba(247,147,26,0.3)',
-            borderColor: 'rgba(247,147,26,0.6)',
-            borderWidth: 1,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-          scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } }
-        }
+        data: { labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0), datasets: [{ label: 'Volume', data: volumes.filter((_,i) => i % Math.max(1, Math.floor(volumes.length/30)) === 0), backgroundColor: 'rgba(247,147,26,0.3)', borderColor: 'rgba(247,147,26,0.6)', borderWidth: 1 }] },
+        options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } }, scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } } }
       });
     }
 
-    // Market cap chart
     if (mcaps.length) {
       const mcCtx = document.getElementById('mcapChart')?.getContext('2d');
       if (mcCtx) {
@@ -925,32 +907,13 @@ async function loadPriceChart(days) {
         mcGrad.addColorStop(1, 'rgba(0,255,136,0.0)');
         makeChart('mcapChart', {
           type: 'line',
-          data: {
-            labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
-            datasets: [{
-              label: 'Market Cap',
-              data: mcaps.filter((_,i) => i % Math.max(1, Math.floor(mcaps.length/30)) === 0),
-              borderColor: GREEN,
-              borderWidth: 1.5,
-              backgroundColor: mcGrad,
-              fill: true,
-              tension: 0.3,
-              pointRadius: 0,
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-            scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } }
-          }
+          data: { labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0), datasets: [{ label: 'Market Cap', data: mcaps.filter((_,i) => i % Math.max(1, Math.floor(mcaps.length/30)) === 0), borderColor: GREEN, borderWidth: 1.5, backgroundColor: mcGrad, fill: true, tension: 0.3, pointRadius: 0 }] },
+          options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } }, scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } } }
         });
       }
     }
 
-    // Build advanced charts from price data
     buildAdvancedCharts(prices, labels);
-
-  } catch(e) { console.error('Price chart error:', e); }
 }
 
 function buildAdvancedCharts(prices, labels) {
@@ -1358,26 +1321,36 @@ async function fetchBlocks() {
 
 // ═══════════════════════════════════════
 // INIT & REFRESH
+// Stagger CoinGecko calls so they don't all fire simultaneously
+// CG queue enforces 2.5s gap — init takes ~7s total for 3 CG calls
+// Mempool/F&G are different services, safe to fire immediately
 // ═══════════════════════════════════════
 async function init() {
-  await Promise.allSettled([
-    fetchCoinGeckoMarket(),
-    fetchGlobal(),
-    fetchFearGreed(),
-    fetchMempool(),
-    fetchBlocks(),
-    loadPriceChart(7),
-  ]);
+  // Non-CoinGecko calls fire instantly
+  fetchFearGreed();
+  fetchMempool();
+  fetchBlocks();
+
+  // CoinGecko calls are queued — fire sequentially with 2.5s spacing
+  fetchCoinGeckoMarket();           // queued call 1
+  fetchGlobal();                    // queued call 2 (fires ~2.5s later)
+  loadPriceChart(7);                // queued call 3 (fires ~5s later)
 }
 
 init();
 
-// Auto-refresh intervals
-setInterval(fetchCoinGeckoMarket, 30000);
-setInterval(fetchGlobal, 60000);
-setInterval(fetchFearGreed, 300000);
-setInterval(fetchMempool, 30000);
-setInterval(fetchBlocks, 60000);
+// Intervals — conservative to stay well under 30 req/min
+// CoinGecko: 1 call per 90s = ~0.7 req/min
+// Global merged into market cycle every 3rd tick
+let marketCycle = 0;
+setInterval(() => {
+  fetchCoinGeckoMarket();
+  if (++marketCycle % 3 === 0) fetchGlobal(); // global every 270s
+}, 90000);
+
+setInterval(fetchFearGreed, 300000);  // 5 min — alternative.me
+setInterval(fetchMempool, 60000);     // 60s  — mempool.space (generous limit)
+setInterval(fetchBlocks, 120000);     // 2 min — mempool.space
 </script>
 </body>
 </html>

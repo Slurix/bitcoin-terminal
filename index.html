@@ -695,26 +695,33 @@ function makeChart(id, config) {
 
 // ═══════════════════════════════════════
 // COINGECKO RATE-LIMIT QUEUE
-// Free tier: ~30 req/min → enforce 1 req per 2.5s max
+// Fires first request IMMEDIATELY. Only throttles between back-to-back calls.
+// Free tier: ~30 req/min → enforce 2200ms minimum between request STARTS.
 // ═══════════════════════════════════════
 const CG_BASE = 'https://api.coingecko.com/api/v3';
-let cgQueue = Promise.resolve();
-let cgBackoffMs = 0;
-const CG_MIN_GAP = 2500; // ms between requests
+let lastCGTime = 0;
+let cgChain = Promise.resolve();
+const CG_MIN_GAP = 2200;
 
 function cgFetch(path) {
-  cgQueue = cgQueue.then(() => new Promise(resolve => setTimeout(resolve, CG_MIN_GAP + cgBackoffMs)));
-  return cgQueue.then(async () => {
+  // Each call waits for the prior to START, then pads only the remaining gap.
+  // First call: lastCGTime=0, elapsed=huge → wait=0 → fires immediately.
+  const result = cgChain.then(async () => {
+    const wait = Math.max(0, CG_MIN_GAP - (Date.now() - lastCGTime));
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    lastCGTime = Date.now();
     const res = await fetch(CG_BASE + path);
     if (res.status === 429) {
-      cgBackoffMs = Math.min((cgBackoffMs || 5000) * 2, 60000);
-      console.warn(`CoinGecko 429 — backing off ${cgBackoffMs/1000}s`);
-      await new Promise(r => setTimeout(r, cgBackoffMs));
+      const retry = 15000;
+      console.warn(`CoinGecko 429 — waiting ${retry/1000}s`);
+      await new Promise(r => setTimeout(r, retry));
       throw new Error('rate_limited');
     }
-    cgBackoffMs = 0; // reset backoff on success
     return res.json();
   });
+  // Keep chain alive even on error so next call still fires
+  cgChain = result.catch(() => {});
+  return result;
 }
 
 // ═══════════════════════════════════════
@@ -771,25 +778,29 @@ const chartCache = {};
 const CHART_CACHE_TTL = 30 * 60 * 1000;
 
 // ═══════════════════════════════════════
-// API: COINGECKO — market + global merged
+// API: COINGECKO — single call covers market + dominance
+// Dominance derived from returned market caps (saves 1 full CG request)
 // ═══════════════════════════════════════
 let lastBtcPrice = null;
 
 async function fetchCoinGeckoMarket() {
-  // Cache check — skip live fetch if data is still fresh
+  // If cache is fresh, apply it and skip the network call entirely
   const cached = readCache();
   if (cached?.market) {
     applyMarketData(cached.market);
     if (cached.dominance) applyDominance(cached.dominance);
     return;
   }
-
   try {
     const data = await cgFetch('/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
     if (!data || !data[0]) return;
+    // Derive BTC dominance from returned market caps — no extra /global call needed
+    const totalMcap = data.reduce((s, c) => s + (c.market_cap || 0), 0);
+    const btcDom = totalMcap > 0 ? { btc: (data[0].market_cap / totalMcap * 100) } : null;
     const existing = readCache() || {};
-    writeCache({ ...existing, market: data, ts_market: Date.now() });
+    writeCache({ ...existing, market: data, dominance: btcDom, _ts: Date.now() });
     applyMarketData(data);
+    if (btcDom) applyDominance(btcDom);
     showLiveBadge();
   } catch(e) {
     if (e.message !== 'rate_limited') console.error('CoinGecko market error:', e);
@@ -861,27 +872,14 @@ function applyMarketData(data) {
     document.getElementById('last-updated').textContent = 'UPDATED ' + new Date().toLocaleTimeString();
 }
 
-// ═══════════════════════════════════════
-// COINGECKO GLOBAL
-// ═══════════════════════════════════════
 function applyDominance(domData) {
-  const dom = domData.btc?.toFixed(1) + '%';
+  const dom = (domData.btc || 0).toFixed(1) + '%';
   setText('dominance', dom);
   ['t-dom','t-dom2'].forEach(id => setText(id, dom));
 }
 
-async function fetchGlobal() {
-  try {
-    const data = await cgFetch('/global');
-    if (!data?.data) return;
-    const existing = readCache() || {};
-    writeCache({ ...existing, dominance: data.data.market_cap_percentage });
-    applyDominance(data.data.market_cap_percentage);
-  } catch(e) {}
-}
-
 // ═══════════════════════════════════════
-// PRICE CHART — cached per timeframe, 5-min TTL
+// PRICE CHART — cached per timeframe, 30-min TTL
 // ═══════════════════════════════════════
 let activeDays = 7;
 async function loadPriceChart(days, triggerEl) {
@@ -1333,19 +1331,27 @@ function init() {
   document.getElementById('last-updated').textContent =
     cached ? 'CACHED — ' + new Date(cached._ts || Date.now()).toLocaleTimeString() : 'SNAPSHOT DATA — updating…';
 
-  // ── STEP 2: Fetch live data in background (staggered via cgFetch queue) ────
-  scheduleLiveFetch();
+  // ── STEP 2: Background live fetch — skips CG entirely if cache is warm ──────
+  scheduleLiveFetch(false);
 }
 
-function scheduleLiveFetch() {
-  // Mempool & F&G: no rate limit concerns, fire right away
+function scheduleLiveFetch(forceCG = false) {
+  // Mempool & F&G have generous limits — always refresh these
   fetchFearGreed();
   fetchMempool();
   fetchBlocks();
-  // CoinGecko: queue enforces 2.5s spacing between each call
-  fetchCoinGeckoMarket();
-  fetchGlobal();
-  loadPriceChart(7);
+
+  // CoinGecko: only fire if cache is stale (or forced by 30-min interval)
+  // This is the key change — avoids ALL CG calls on a warm-cache page load
+  const cached = readCache();
+  const cacheAge = cached?._ts ? Date.now() - cached._ts : Infinity;
+  const cgStale = forceCG || cacheAge > CACHE_TTL;
+
+  if (cgStale) {
+    // 2 calls max: market (immediate) + chart (fires ~2.2s later if market was fast)
+    fetchCoinGeckoMarket();
+    loadPriceChart(activeDays); // uses cache if fresh, otherwise queues after market
+  }
 }
 
 // ── Override fetchFearGreed / fetchMempool / fetchBlocks to cache results ─────
@@ -1405,14 +1411,14 @@ init();
 
 // ── Background refresh every 30 minutes ───────────────────────────────────────
 setInterval(() => {
-  // Clear cache so next fetch always goes live
   try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
-  scheduleLiveFetch();
+  scheduleLiveFetch(true); // forceCG = true
 }, 30 * 60 * 1000);
 
-// Mempool/blocks refresh more frequently (no rate limits)
-setInterval(fetchMempool, 60000);
-setInterval(fetchBlocks,  120000);
+// Mempool has generous limits — refresh every 90s
+// Blocks every 3 min — blocks only come every ~10 min anyway
+setInterval(fetchMempool, 90000);
+setInterval(fetchBlocks,  180000);
 </script>
 </body>
 </html>

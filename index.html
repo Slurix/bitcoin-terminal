@@ -119,21 +119,6 @@
   #clock { font-family: 'Share Tech Mono'; font-size: 13px; color: var(--dim); }
   #last-updated { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
 
-  /* NAV */
-  nav {
-    display: flex; gap: 2px; margin-bottom: 20px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    padding: 6px;
-  }
-  .nav-link {
-    padding: 8px 20px; font-family: 'Orbitron'; font-size: 10px; letter-spacing: 2px;
-    text-decoration: none; color: var(--dim); text-transform: uppercase;
-    border: 1px solid transparent; transition: all 0.2s;
-  }
-  .nav-link:hover { color: var(--btc); border-color: var(--border); }
-  .nav-link.active { color: var(--btc); border-color: var(--btc); background: rgba(247,147,26,0.08); }
-
   /* BIG PRICE */
   .price-hero {
     grid-column: 1 / -1;
@@ -375,12 +360,6 @@
     </div>
   </header>
 
-  <!-- NAV -->
-  <nav>
-    <a href="index.html" class="nav-link active">⬡ DASHBOARD</a>
-    <a href="news.html" class="nav-link">⬡ NEWS FEED</a>
-  </nav>
-
   <!-- PRICE HERO -->
   <div class="price-hero">
     <div>
@@ -427,13 +406,13 @@
     <div class="panel col-8">
       <div class="panel-title">PRICE HISTORY (USD)</div>
       <div class="tf-buttons">
-        <button class="tf-btn" onclick="loadPriceChart(1, this)">1D</button>
-        <button class="tf-btn active" onclick="loadPriceChart(7, this)">7D</button>
-        <button class="tf-btn" onclick="loadPriceChart(30, this)">30D</button>
-        <button class="tf-btn" onclick="loadPriceChart(90, this)">3M</button>
-        <button class="tf-btn" onclick="loadPriceChart(365, this)">1Y</button>
-        <button class="tf-btn" onclick="loadPriceChart(1825, this)">5Y</button>
-        <button class="tf-btn" onclick="loadPriceChart('max', this)">MAX</button>
+        <button class="tf-btn" onclick="loadPriceChart(1)">1D</button>
+        <button class="tf-btn active" onclick="loadPriceChart(7)">7D</button>
+        <button class="tf-btn" onclick="loadPriceChart(30)">30D</button>
+        <button class="tf-btn" onclick="loadPriceChart(90)">3M</button>
+        <button class="tf-btn" onclick="loadPriceChart(365)">1Y</button>
+        <button class="tf-btn" onclick="loadPriceChart(1825)">5Y</button>
+        <button class="tf-btn" onclick="loadPriceChart('max')">MAX</button>
       </div>
       <canvas id="priceChart" height="220"></canvas>
     </div>
@@ -694,126 +673,23 @@ function makeChart(id, config) {
 }
 
 // ═══════════════════════════════════════
-// COINGECKO RATE-LIMIT QUEUE
-// Fires first request IMMEDIATELY. Only throttles between back-to-back calls.
-// Free tier: ~30 req/min → enforce 2200ms minimum between request STARTS.
-// ═══════════════════════════════════════
-const CG_BASE = 'https://api.coingecko.com/api/v3';
-let lastCGTime = 0;
-let cgChain = Promise.resolve();
-const CG_MIN_GAP = 2200;
-
-function cgFetch(path) {
-  // Each call waits for the prior to START, then pads only the remaining gap.
-  // First call: lastCGTime=0, elapsed=huge → wait=0 → fires immediately.
-  const result = cgChain.then(async () => {
-    const wait = Math.max(0, CG_MIN_GAP - (Date.now() - lastCGTime));
-    if (wait > 0) await new Promise(r => setTimeout(r, wait));
-    lastCGTime = Date.now();
-    const res = await fetch(CG_BASE + path);
-    if (res.status === 429) {
-      const retry = 15000;
-      console.warn(`CoinGecko 429 — waiting ${retry/1000}s`);
-      await new Promise(r => setTimeout(r, retry));
-      throw new Error('rate_limited');
-    }
-    return res.json();
-  });
-  // Keep chain alive even on error so next call still fires
-  cgChain = result.catch(() => {});
-  return result;
-}
-
-// ═══════════════════════════════════════
-// SNAPSHOT — pre-saved data, renders at ZERO network cost
-// The dashboard shows this instantly on every load.
-// Live data overwrites it in the background.
-// Update these values periodically to keep the snapshot fresh.
-// Last snapshot: Feb 2026
-// ═══════════════════════════════════════
-const SNAPSHOT = {
-  market: [
-    { id:'bitcoin',     symbol:'btc', name:'Bitcoin',   current_price:97420,   price_change_24h: 1840,  price_change_percentage_24h: 1.93,  price_change_percentage_7d_in_currency: 5.12,  price_change_percentage_30d_in_currency: 18.4,  high_24h:98250,  low_24h:95100, market_cap: 1928000000000, total_volume: 38400000000, circulating_supply: 19836000, ath: 108786, ath_date:'2024-12-17', market_cap_rank:1 },
-    { id:'ethereum',    symbol:'eth', name:'Ethereum',  current_price:2680,    price_change_24h: 42,    price_change_percentage_24h: 1.59,  price_change_percentage_7d_in_currency: 3.8,   price_change_percentage_30d_in_currency: 12.1,  high_24h:2710,   low_24h:2620,  market_cap: 322000000000,  total_volume: 14200000000, circulating_supply: 120200000, ath: 4878,   ath_date:'2021-11-10', market_cap_rank:2 },
-    { id:'solana',      symbol:'sol', name:'Solana',    current_price:187,     price_change_24h: 4.2,   price_change_percentage_24h: 2.30,  price_change_percentage_7d_in_currency: 7.1,   price_change_percentage_30d_in_currency: 22.3,  high_24h:191,    low_24h:182,   market_cap: 88900000000,   total_volume: 4100000000,  circulating_supply: 475000000,  ath: 259,    ath_date:'2021-11-06', market_cap_rank:5 },
-    { id:'binancecoin', symbol:'bnb', name:'BNB',       current_price:652,     price_change_24h: 8.1,   price_change_percentage_24h: 1.26,  price_change_percentage_7d_in_currency: 2.9,   price_change_percentage_30d_in_currency: 9.8,   high_24h:661,    low_24h:641,   market_cap: 94800000000,   total_volume: 1980000000,  circulating_supply: 145400000,  ath: 686,    ath_date:'2021-05-10', market_cap_rank:4 },
-    { id:'ripple',      symbol:'xrp', name:'XRP',       current_price:2.34,    price_change_24h: 0.06,  price_change_percentage_24h: 2.63,  price_change_percentage_7d_in_currency: 6.4,   price_change_percentage_30d_in_currency: 31.2,  high_24h:2.41,   low_24h:2.28,  market_cap: 134000000000,  total_volume: 5800000000,  circulating_supply: 57300000000, ath: 3.84,   ath_date:'2021-04-14', market_cap_rank:3 },
-    { id:'cardano',     symbol:'ada', name:'Cardano',   current_price:0.912,   price_change_24h: 0.018, price_change_percentage_24h: 2.01,  price_change_percentage_7d_in_currency: 4.2,   price_change_percentage_30d_in_currency: 14.7,  high_24h:0.931,  low_24h:0.888, market_cap: 32400000000,   total_volume: 820000000,   circulating_supply: 35500000000, ath: 3.09,   ath_date:'2021-09-02', market_cap_rank:9 },
-    { id:'avalanche-2', symbol:'avax',name:'Avalanche', current_price:26.4,    price_change_24h: 0.54,  price_change_percentage_24h: 2.09,  price_change_percentage_7d_in_currency: 5.8,   price_change_percentage_30d_in_currency: 17.1,  high_24h:27.1,   low_24h:25.7,  market_cap: 11100000000,   total_volume: 390000000,   circulating_supply: 420000000,   ath: 144,    ath_date:'2021-11-21', market_cap_rank:13 },
-    { id:'polkadot',    symbol:'dot', name:'Polkadot',  current_price:5.82,    price_change_24h: 0.12,  price_change_percentage_24h: 2.10,  price_change_percentage_7d_in_currency: 4.9,   price_change_percentage_30d_in_currency: 11.3,  high_24h:5.94,   low_24h:5.68,  market_cap: 8700000000,    total_volume: 270000000,   circulating_supply: 1490000000,  ath: 54.98,  ath_date:'2021-11-04', market_cap_rank:18 },
-  ],
-  dominance: { btc: 58.4 },
-  fearGreed: { value: 72, label: 'Greed' },
-  fees: { fastestFee: 12, halfHourFee: 8, hourFee: 5, minimumFee: 2 },
-  mempool: { count: 14200, vsize: 18700000, total_fee: 820000 },
-  blockHeight: 883140,
-  // 7-day price series — 168 hourly points (7 * 24)
-  priceChart7d: (() => {
-    const base = 92800, now = Date.now(), hour = 3600000;
-    const seed = [0,0.3,0.8,0.4,-0.2,0.6,1.1,0.9,0.5,0.2,-0.1,0.4,0.7,1.2,0.8,0.3,0.6,0.9,1.4,1.1,0.7,0.4,0.8,1.3,1.0,0.6,0.3,-0.2,0.4,0.9,1.5,1.2,0.8,1.1,1.6,1.3,0.9,0.5,0.8,1.3,1.7,1.4,1.1,1.4,1.8,1.5,1.2,0.9,1.2,1.6,2.0,1.7,1.4,1.1,1.5,1.9,2.3,2.0,1.7,1.4,1.8,2.2,2.6,2.3,2.0,1.7,2.0,2.4,2.8,2.5,2.2,1.9,2.2,2.6,3.0,2.7,2.4,2.1,2.5,2.9,3.3,3.0,2.7,2.4,2.8,3.2,3.6,3.3,3.0,2.7,3.0,3.4,3.8,3.5,3.2,2.9,3.2,3.6,4.0,3.7,3.4,3.1,3.4,3.8,4.2,3.9,3.6,3.3,3.7,4.1,4.5,4.2,3.9,3.6,3.9,4.3,4.7,4.4,4.1,3.8,4.2,4.6,5.0,4.7,4.4,4.1,4.4,4.8,5.2,4.9,4.6,4.3,4.6,5.0,5.4,5.1,4.8,4.5,4.8,5.2,5.6,5.3,5.0,4.7,5.0,5.4,5.8,5.5,5.2,4.9,5.2,5.6,6.0,5.7,5.4,5.1,5.4,5.8,6.2,5.9,5.6,5.3,5.7,6.1,6.5,6.2,5.9,5.6];
-    return Array.from({length:168},(_,i) => [now - (167-i)*hour, Math.round(base + seed[i%seed.length]*100 + Math.sin(i/12)*200 + i*28)]);
-  })(),
-};
-
-// ── Persistent cache (localStorage, 30-min TTL) ───────────────────────────────
-const CACHE_KEY  = 'btc_dash_v2';
-const CACHE_TTL  = 30 * 60 * 1000; // 30 minutes
-
-function readCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (Date.now() - obj.ts < CACHE_TTL) return obj.data;
-  } catch(e) {}
-  return null;
-}
-
-function writeCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
-}
-
-// Chart data cache: keyed by days, 30-min TTL (same as data cache)
-const chartCache = {};
-const CHART_CACHE_TTL = 30 * 60 * 1000;
-
-// ═══════════════════════════════════════
-// API: COINGECKO — single call covers market + dominance
-// Dominance derived from returned market caps (saves 1 full CG request)
+// API: COINGECKO
 // ═══════════════════════════════════════
 let lastBtcPrice = null;
 
 async function fetchCoinGeckoMarket() {
-  // If cache is fresh, apply it and skip the network call entirely
-  const cached = readCache();
-  if (cached?.market) {
-    applyMarketData(cached.market);
-    if (cached.dominance) applyDominance(cached.dominance);
-    return;
-  }
   try {
-    const data = await cgFetch('/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
+    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
+    const data = await res.json();
     if (!data || !data[0]) return;
-    // Derive BTC dominance from returned market caps — no extra /global call needed
-    const totalMcap = data.reduce((s, c) => s + (c.market_cap || 0), 0);
-    const btcDom = totalMcap > 0 ? { btc: (data[0].market_cap / totalMcap * 100) } : null;
-    const existing = readCache() || {};
-    writeCache({ ...existing, market: data, dominance: btcDom, _ts: Date.now() });
-    applyMarketData(data);
-    if (btcDom) applyDominance(btcDom);
-    showLiveBadge();
-  } catch(e) {
-    if (e.message !== 'rate_limited') console.error('CoinGecko market error:', e);
-  }
-}
 
-function applyMarketData(data) {
     const btc = data[0];
     const price = btc.current_price;
     const change24 = btc.price_change_percentage_24h;
     const change7 = btc.price_change_percentage_7d_in_currency;
     const change30 = btc.price_change_percentage_30d_in_currency;
 
+    // Big price
     const bigPrice = document.getElementById('big-price');
     if (bigPrice) {
       const wasPrice = lastBtcPrice;
@@ -827,10 +703,17 @@ function applyMarketData(data) {
     lastBtcPrice = price;
 
     const changeEl = document.getElementById('price-change');
-    if (changeEl) { changeEl.textContent = fmt.pct(change24); setColor(changeEl, change24); }
+    if (changeEl) {
+      changeEl.textContent = fmt.pct(change24);
+      setColor(changeEl, change24);
+    }
 
     const absEl = document.getElementById('price-change-abs');
-    if (absEl) { absEl.textContent = '(' + fmt.price(btc.price_change_24h) + ')'; setColor(absEl, change24); }
+    if (absEl) {
+      const abs = btc.price_change_24h;
+      absEl.textContent = '(' + fmt.price(abs) + ')';
+      setColor(absEl, change24);
+    }
 
     setText('price-high', fmt.price(btc.high_24h));
     setText('price-low', fmt.price(btc.low_24h));
@@ -840,14 +723,16 @@ function applyMarketData(data) {
     setText('circulating', (btc.circulating_supply / 1e6).toFixed(3) + 'M');
     setText('mkt-rank', '#' + btc.market_cap_rank);
 
-    const c7el = document.getElementById('change7d');
-    if (c7el) { c7el.textContent = fmt.pct(change7); setColor(c7el, change7); }
-    const c30el = document.getElementById('change30d');
-    if (c30el) { c30el.textContent = fmt.pct(change30); setColor(c30el, change30); }
+    const change7El = document.getElementById('change7d');
+    if (change7El) { change7El.textContent = fmt.pct(change7); setColor(change7El, change7); }
+
+    const change30El = document.getElementById('change30d');
+    if (change30El) { change30El.textContent = fmt.pct(change30); setColor(change30El, change30); }
 
     setText('ath-metric', fmt.price(btc.ath));
     setText('ath-date', new Date(btc.ath_date).toLocaleDateString());
 
+    // Supply
     const mined = btc.circulating_supply;
     const pct = (mined / 21000000 * 100).toFixed(2);
     const supplyBar = document.getElementById('supply-bar');
@@ -855,67 +740,82 @@ function applyMarketData(data) {
     setText('supply-mined', (mined/1e6).toFixed(3) + 'M');
     setText('supply-left', ((21000000 - mined)/1e6).toFixed(3) + 'M');
 
+    // Supply donut
     makeChart('supplyDonut', {
       type: 'doughnut',
-      data: { labels: ['Mined', 'Unmined'], datasets: [{ data: [mined, 21000000 - mined], backgroundColor: ['rgba(247,147,26,0.8)','rgba(247,147,26,0.08)'], borderColor: ['rgba(247,147,26,1)','rgba(247,147,26,0.2)'], borderWidth: 1 }] },
-      options: { responsive: true, cutout: '70%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.label + ': ' + (c.raw/1e6).toFixed(2) + 'M BTC' } } } }
+      data: {
+        labels: ['Mined', 'Unmined'],
+        datasets: [{
+          data: [mined, 21000000 - mined],
+          backgroundColor: ['rgba(247,147,26,0.8)', 'rgba(247,147,26,0.08)'],
+          borderColor: ['rgba(247,147,26,1)', 'rgba(247,147,26,0.2)'],
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '70%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: c => c.label + ': ' + (c.raw/1e6).toFixed(2) + 'M BTC' }
+          }
+        }
+      }
     });
 
+    // Ticker
     ['t-price','t-price2'].forEach(id => setText(id, fmt.price(price)));
-    ['t-change','t-change2'].forEach(id => setText(id, fmt.pct(change24)));
-    ['t-mcap','t-mcap2'].forEach(id => setText(id, fmt.compact(btc.market_cap)));
-    ['t-vol','t-vol2'].forEach(id => setText(id, fmt.compact(btc.total_volume)));
+    const chStr = fmt.pct(change24);
+    ['t-change','t-change2'].forEach(id => setText(id, chStr));
+    const mcStr = fmt.compact(btc.market_cap);
+    ['t-mcap','t-mcap2'].forEach(id => setText(id, mcStr));
+    const volStr = fmt.compact(btc.total_volume);
+    ['t-vol','t-vol2'].forEach(id => setText(id, volStr));
 
+    // Global table
     buildGlobalTable(data);
-    buildDominanceChart(data);
-    buildExchangeVolume(data);
-    document.getElementById('last-updated').textContent = 'UPDATED ' + new Date().toLocaleTimeString();
-}
 
-function applyDominance(domData) {
-  const dom = (domData.btc || 0).toFixed(1) + '%';
-  setText('dominance', dom);
-  ['t-dom','t-dom2'].forEach(id => setText(id, dom));
+    // Dominance chart
+    buildDominanceChart(data);
+
+    // Exchange volume mock (top exchanges with CoinGecko aggregate data)
+    buildExchangeVolume(data);
+
+    document.getElementById('last-updated').textContent = 'UPDATED ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error('CoinGecko market error:', e);
+  }
 }
 
 // ═══════════════════════════════════════
-// PRICE CHART — cached per timeframe, 30-min TTL
+// COINGECKO GLOBAL
+// ═══════════════════════════════════════
+async function fetchGlobal() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/global');
+    const { data } = await res.json();
+    if (!data) return;
+    const dom = data.market_cap_percentage.btc?.toFixed(1) + '%';
+    setText('dominance', dom);
+    ['t-dom','t-dom2'].forEach(id => setText(id, dom));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════
+// PRICE CHART
 // ═══════════════════════════════════════
 let activeDays = 7;
-async function loadPriceChart(days, triggerEl) {
+async function loadPriceChart(days) {
   activeDays = days;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  if (triggerEl) triggerEl.classList.add('active');
-  else document.querySelectorAll('.tf-btn')[1]?.classList.add('active');
+  event?.target?.classList?.add('active');
 
-  const cacheKey = 'chart_' + days;
-
-  // 1. In-memory cache (same session)
-  const mem = chartCache[cacheKey];
-  if (mem && Date.now() - mem.ts < CHART_CACHE_TTL) { renderPriceCharts(mem.data, days); return; }
-
-  // 2. localStorage cache
-  const stored = readCache();
-  if (stored?.[cacheKey]) { renderPriceCharts(stored[cacheKey], days); chartCache[cacheKey] = { ts: Date.now(), data: stored[cacheKey] }; return; }
-
-  // 3. Snapshot (7D only — instant fallback, no network needed)
-  if (days === 7) {
-    const snapData = { prices: SNAPSHOT.priceChart7d, total_volumes: [], market_caps: [] };
-    renderPriceCharts(snapData, days);
-  }
-
-  // 4. Fetch live in background, update when ready
   try {
-    const data = await cgFetch(`/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
-    if (!data || !data.prices) return;
-    chartCache[cacheKey] = { ts: Date.now(), data };
-    const existing = readCache() || {};
-    writeCache({ ...existing, [cacheKey]: data });
-    renderPriceCharts(data, days);
-  } catch(e) { if (e.message !== 'rate_limited') console.error('Price chart error:', e); }
-}
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
+    const data = await res.json();
+    if (!data.prices) return;
 
-function renderPriceCharts(data, days) {
     const labels = data.prices.map(p => {
       const d = new Date(p[0]);
       return days <= 1 ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
@@ -926,6 +826,7 @@ function renderPriceCharts(data, days) {
     const volumes = data.total_volumes ? data.total_volumes.map(v => v[1]) : [];
     const mcaps = data.market_caps ? data.market_caps.map(m => m[1]) : [];
 
+    // Gradient
     const pCtx = document.getElementById('priceChart')?.getContext('2d');
     if (!pCtx) return;
     const grad = pCtx.createLinearGradient(0, 0, 0, 400);
@@ -934,22 +835,67 @@ function renderPriceCharts(data, days) {
 
     makeChart('priceChart', {
       type: 'line',
-      data: { labels, datasets: [{ label: 'BTC Price', data: prices, borderColor: BTC_ORANGE, borderWidth: 1.5, backgroundColor: grad, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4 }] },
+      data: {
+        labels,
+        datasets: [{
+          label: 'BTC Price',
+          data: prices,
+          borderColor: BTC_ORANGE,
+          borderWidth: 1.5,
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        }]
+      },
       options: {
-        responsive: true, interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,10,16,0.95)', borderColor: 'rgba(247,147,26,0.3)', borderWidth: 1, titleColor: '#6b5c42', bodyColor: '#f7931a', callbacks: { label: c => fmt.price(c.parsed.y) } } },
-        scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) }, grid: { color: 'rgba(247,147,26,0.06)' } } }
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(10,10,16,0.95)',
+            borderColor: 'rgba(247,147,26,0.3)',
+            borderWidth: 1,
+            titleColor: '#6b5c42',
+            bodyColor: '#f7931a',
+            callbacks: { label: c => fmt.price(c.parsed.y) }
+          }
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+          y: {
+            ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) },
+            grid: { color: 'rgba(247,147,26,0.06)' }
+          }
+        }
       }
     });
 
+    // Volume chart
     if (volumes.length) {
       makeChart('volumeChart', {
         type: 'bar',
-        data: { labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0), datasets: [{ label: 'Volume', data: volumes.filter((_,i) => i % Math.max(1, Math.floor(volumes.length/30)) === 0), backgroundColor: 'rgba(247,147,26,0.3)', borderColor: 'rgba(247,147,26,0.6)', borderWidth: 1 }] },
-        options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } }, scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } } }
+        data: {
+          labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
+          datasets: [{
+            label: 'Volume',
+            data: volumes.filter((_,i) => i % Math.max(1, Math.floor(volumes.length/30)) === 0),
+            backgroundColor: 'rgba(247,147,26,0.3)',
+            borderColor: 'rgba(247,147,26,0.6)',
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
+          scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } }
+        }
       });
     }
 
+    // Market cap chart
     if (mcaps.length) {
       const mcCtx = document.getElementById('mcapChart')?.getContext('2d');
       if (mcCtx) {
@@ -958,13 +904,32 @@ function renderPriceCharts(data, days) {
         mcGrad.addColorStop(1, 'rgba(0,255,136,0.0)');
         makeChart('mcapChart', {
           type: 'line',
-          data: { labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0), datasets: [{ label: 'Market Cap', data: mcaps.filter((_,i) => i % Math.max(1, Math.floor(mcaps.length/30)) === 0), borderColor: GREEN, borderWidth: 1.5, backgroundColor: mcGrad, fill: true, tension: 0.3, pointRadius: 0 }] },
-          options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } }, scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } } }
+          data: {
+            labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
+            datasets: [{
+              label: 'Market Cap',
+              data: mcaps.filter((_,i) => i % Math.max(1, Math.floor(mcaps.length/30)) === 0),
+              borderColor: GREEN,
+              borderWidth: 1.5,
+              backgroundColor: mcGrad,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
+            scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } }
+          }
         });
       }
     }
 
+    // Build advanced charts from price data
     buildAdvancedCharts(prices, labels);
+
+  } catch(e) { console.error('Price chart error:', e); }
 }
 
 function buildAdvancedCharts(prices, labels) {
@@ -1248,177 +1213,150 @@ function buildExchangeVolume(coins) {
   document.getElementById('exchange-vol-content').innerHTML = html;
 }
 
-
-// ── Live badge helper ──────────────────────────────────────────────────────────
-function showLiveBadge() {
-  document.getElementById('last-updated').textContent = 'LIVE — ' + new Date().toLocaleTimeString();
-}
-
-// ── Apply Fear & Greed snapshot / cached value ─────────────────────────────────
-function applyFearGreed(fg) {
-  const val = fg.value, label = fg.label || fg.value_classification || '';
-  setText('fg-value', val);
-  setText('fg-label', label.toUpperCase());
-  const fgVal = document.getElementById('fg-value');
-  const fgBar = document.getElementById('fg-bar');
-  const color = val <= 25 ? 'var(--red)' : val <= 45 ? 'rgb(255,120,0)' : val <= 55 ? 'var(--text)' : val <= 75 ? 'var(--btc)' : 'var(--green)';
-  if (fgVal) fgVal.style.color = color;
-  if (fgBar) { fgBar.style.background = color; fgBar.style.width = val + '%'; }
-}
-
-// ── Apply mempool snapshot / cached value ──────────────────────────────────────
-function applyMempool(fees, mempool, blockHeight) {
-  const el = document.getElementById('mempool-content');
-  if (el) el.innerHTML = `
-    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">⚡ FASTEST</span><span class="fee-badge fee-fast">${fees.fastestFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~10 min</span></div>
-    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">🟠 MEDIUM</span><span class="fee-badge fee-med">${fees.halfHourFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~30 min</span></div>
-    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">🟢 ECONOMY</span><span class="fee-badge fee-slow">${fees.hourFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~60 min</span></div>
-    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">MINIMUM</span><span style="font-size:12px;color:var(--dim);">${fees.minimumFee} sat/vB</span></div>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(247,147,26,0.1);">
-      <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">MEMPOOL STATUS</div>
-      <div style="font-size:12px;margin-bottom:4px;">PENDING TXS: <span style="color:var(--btc)">${fmt.number(mempool.count)}</span></div>
-      <div style="font-size:12px;margin-bottom:4px;">SIZE: <span style="color:var(--btc)">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
-      <div style="font-size:12px;">TOTAL FEES: <span style="color:var(--btc)">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
-    </div>`;
-  if (blockHeight) {
-    ['t-block','t-block2'].forEach(id => setText(id, '#' + fmt.number(blockHeight)));
-    ['t-mempool','t-mempool2'].forEach(id => setText(id, fmt.number(mempool.count)));
-    // Halving countdown
-    const NEXT_HALVING = 1050000;
-    const blocksLeft = NEXT_HALVING - blockHeight;
-    const halvingDate = new Date(Date.now() + blocksLeft * 10 * 60 * 1000);
-    setText('halving-block', '#' + fmt.number(NEXT_HALVING));
-    setText('halving-blocks-left', fmt.number(blocksLeft));
-    setText('halving-date', halvingDate.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}));
-    ['t-halving','t-halving2'].forEach(id => setText(id, halvingDate.toLocaleDateString()));
-    if (!window._halvingTimer) {
-      window._halvingTimer = setInterval(() => {
-        const diff = halvingDate - new Date();
-        if (diff <= 0) return;
-        setText('hc-days',  Math.floor(diff/86400000));
-        setText('hc-hours', Math.floor((diff%86400000)/3600000));
-        setText('hc-mins',  Math.floor((diff%3600000)/60000));
-        setText('hc-secs',  Math.floor((diff%60000)/1000));
-      }, 1000);
-    }
-  }
-}
-
 // ═══════════════════════════════════════
-// INIT — instant render, then live fetch in background
+// FEAR & GREED
 // ═══════════════════════════════════════
-function init() {
-  const cached = readCache();
-
-  // ── STEP 1: Render immediately from cache or snapshot (0ms) ────────────────
-  applyMarketData(cached?.market || SNAPSHOT.market);
-  applyDominance(cached?.dominance || { btc: SNAPSHOT.dominance.btc });
-  applyFearGreed(cached?.fearGreed || SNAPSHOT.fearGreed);
-  applyMempool(
-    cached?.fees    || SNAPSHOT.fees,
-    cached?.mempool || SNAPSHOT.mempool,
-    cached?.blockHeight || SNAPSHOT.blockHeight
-  );
-
-  // Snapshot price chart renders with zero API calls
-  const snap7d = { prices: SNAPSHOT.priceChart7d, total_volumes: [], market_caps: [] };
-  const mem7d = cached?.chart_7 || null;
-  renderPriceCharts(mem7d || snap7d, 7);
-
-  // Show cached blocks if available
-  if (cached?.blocks) applyBlocks(cached.blocks);
-
-  document.getElementById('last-updated').textContent =
-    cached ? 'CACHED — ' + new Date(cached._ts || Date.now()).toLocaleTimeString() : 'SNAPSHOT DATA — updating…';
-
-  // ── STEP 2: Background live fetch — skips CG entirely if cache is warm ──────
-  scheduleLiveFetch(false);
-}
-
-function scheduleLiveFetch(forceCG = false) {
-  // Mempool & F&G have generous limits — always refresh these
-  fetchFearGreed();
-  fetchMempool();
-  fetchBlocks();
-
-  // CoinGecko: only fire if cache is stale (or forced by 30-min interval)
-  // This is the key change — avoids ALL CG calls on a warm-cache page load
-  const cached = readCache();
-  const cacheAge = cached?._ts ? Date.now() - cached._ts : Infinity;
-  const cgStale = forceCG || cacheAge > CACHE_TTL;
-
-  if (cgStale) {
-    // 2 calls max: market (immediate) + chart (fires ~2.2s later if market was fast)
-    fetchCoinGeckoMarket();
-    loadPriceChart(activeDays); // uses cache if fresh, otherwise queues after market
-  }
-}
-
-// ── Override fetchFearGreed / fetchMempool / fetchBlocks to cache results ─────
-const _origFearGreed = fetchFearGreed;
-fetchFearGreed = async function() {
+async function fetchFearGreed() {
   try {
     const res = await fetch('https://api.alternative.me/fng/?limit=1');
     const { data } = await res.json();
-    if (!data?.[0]) return;
-    const fg = { value: parseInt(data[0].value), label: data[0].value_classification };
-    applyFearGreed(fg);
-    const existing = readCache() || {};
-    writeCache({ ...existing, fearGreed: fg, _ts: Date.now() });
+    if (!data || !data[0]) return;
+    const val = parseInt(data[0].value);
+    const label = data[0].value_classification;
+    setText('fg-value', val);
+    setText('fg-label', label.toUpperCase());
+    const fgVal = document.getElementById('fg-value');
+    const fgBar = document.getElementById('fg-bar');
+    if (fgVal) {
+      if (val <= 25) { fgVal.style.color = 'var(--red)'; fgBar.style.background = 'var(--red)'; }
+      else if (val <= 45) { fgVal.style.color = 'rgb(255,120,0)'; fgBar.style.background = 'rgb(255,120,0)'; }
+      else if (val <= 55) { fgVal.style.color = 'var(--text)'; fgBar.style.background = 'var(--text)'; }
+      else if (val <= 75) { fgVal.style.color = 'var(--btc)'; fgBar.style.background = 'var(--btc)'; }
+      else { fgVal.style.color = 'var(--green)'; fgBar.style.background = 'var(--green)'; }
+    }
+    if (fgBar) fgBar.style.width = val + '%';
   } catch(e) {}
-};
+}
 
-fetchMempool = async function() {
+// ═══════════════════════════════════════
+// MEMPOOL.SPACE
+// ═══════════════════════════════════════
+async function fetchMempool() {
   try {
     const [feeRes, mempoolRes, blockRes] = await Promise.all([
       fetch('https://mempool.space/api/v1/fees/recommended'),
       fetch('https://mempool.space/api/mempool'),
       fetch('https://mempool.space/api/v1/blocks/tip/height'),
     ]);
+
     const fees = await feeRes.json();
     const mempool = await mempoolRes.json();
     const blockHeight = await blockRes.json();
-    applyMempool(fees, mempool, blockHeight);
-    const existing = readCache() || {};
-    writeCache({ ...existing, fees, mempool, blockHeight, _ts: Date.now() });
-  } catch(e) { console.error('Mempool error:', e); }
-};
 
-function applyBlocks(blocks) {
-  const row = document.getElementById('blocks-row');
-  if (!row || !blocks?.length) return;
-  row.innerHTML = blocks.slice(0,12).map(b => `
-    <div class="block-card" onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
-      <div class="b-height">${fmt.number(b.height)}</div>
-      <div class="b-txs">${fmt.number(b.tx_count)} txs</div>
-      <div class="b-size">${(b.size/1e6).toFixed(2)}MB</div>
-      <div class="b-txs">${(b.extras?.totalFees/1e8||0).toFixed(4)}₿</div>
-    </div>`).join('');
+    // Fees display
+    document.getElementById('mempool-content').innerHTML = `
+      <div class="mempool-row">
+        <span style="font-size:11px;color:var(--dim);">⚡ FASTEST</span>
+        <span class="fee-badge fee-fast">${fees.fastestFee} sat/vB</span>
+        <span style="font-size:10px;color:var(--dim);">~10 min</span>
+      </div>
+      <div class="mempool-row">
+        <span style="font-size:11px;color:var(--dim);">🟠 MEDIUM</span>
+        <span class="fee-badge fee-med">${fees.halfHourFee} sat/vB</span>
+        <span style="font-size:10px;color:var(--dim);">~30 min</span>
+      </div>
+      <div class="mempool-row">
+        <span style="font-size:11px;color:var(--dim);">🟢 ECONOMY</span>
+        <span class="fee-badge fee-slow">${fees.hourFee} sat/vB</span>
+        <span style="font-size:10px;color:var(--dim);">~60 min</span>
+      </div>
+      <div class="mempool-row">
+        <span style="font-size:11px;color:var(--dim);">MINIMUM</span>
+        <span style="font-size:12px;color:var(--dim);">${fees.minimumFee} sat/vB</span>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(247,147,26,0.1);">
+        <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">MEMPOOL STATUS</div>
+        <div style="font-size:12px;margin-bottom:4px;">PENDING TXS: <span style="color:var(--btc)">${fmt.number(mempool.count)}</span></div>
+        <div style="font-size:12px;margin-bottom:4px;">SIZE: <span style="color:var(--btc)">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
+        <div style="font-size:12px;">TOTAL FEES: <span style="color:var(--btc)">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
+      </div>
+    `;
+
+    // Block height for ticker + halving
+    const height = blockHeight;
+    ['t-block','t-block2'].forEach(id => setText(id, '#' + fmt.number(height)));
+    ['t-mempool','t-mempool2'].forEach(id => setText(id, fmt.number(mempool.count)));
+
+    // Halving
+    const NEXT_HALVING = 1050000;
+    const blocksLeft = NEXT_HALVING - height;
+    const secsLeft = blocksLeft * 10 * 60;
+    const halvingDate = new Date(Date.now() + secsLeft * 1000);
+    setText('halving-block', '#' + fmt.number(NEXT_HALVING));
+    setText('halving-blocks-left', fmt.number(blocksLeft));
+    setText('halving-date', halvingDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}));
+    ['t-halving','t-halving2'].forEach(id => setText(id, halvingDate.toLocaleDateString()));
+
+    // Countdown
+    function updateCountdown() {
+      const now = new Date();
+      const diff = halvingDate - now;
+      if (diff <= 0) { setText('hc-days','0'); setText('hc-hours','0'); setText('hc-mins','0'); setText('hc-secs','0'); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setText('hc-days', d); setText('hc-hours', h); setText('hc-mins', m); setText('hc-secs', s);
+    }
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+
+  } catch(e) { console.error('Mempool error:', e); }
 }
 
-fetchBlocks = async function() {
+// ═══════════════════════════════════════
+// RECENT BLOCKS
+// ═══════════════════════════════════════
+async function fetchBlocks() {
   try {
     const res = await fetch('https://mempool.space/api/v1/blocks');
     const blocks = await res.json();
-    if (!blocks?.length) return;
-    applyBlocks(blocks);
-    const existing = readCache() || {};
-    writeCache({ ...existing, blocks, _ts: Date.now() });
+    if (!blocks || !blocks.length) return;
+    const row = document.getElementById('blocks-row');
+    if (!row) return;
+    row.innerHTML = blocks.slice(0,12).map(b => `
+      <div class="block-card" onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
+        <div class="b-height">${fmt.number(b.height)}</div>
+        <div class="b-txs">${fmt.number(b.tx_count)} txs</div>
+        <div class="b-size">${(b.size/1e6).toFixed(2)}MB</div>
+        <div class="b-txs">${(b.extras?.totalFees/1e8||0).toFixed(4)}₿</div>
+      </div>
+    `).join('');
   } catch(e) { console.error('Blocks error:', e); }
-};
+}
+
+// ═══════════════════════════════════════
+// INIT & REFRESH
+// ═══════════════════════════════════════
+async function init() {
+  await Promise.allSettled([
+    fetchCoinGeckoMarket(),
+    fetchGlobal(),
+    fetchFearGreed(),
+    fetchMempool(),
+    fetchBlocks(),
+    loadPriceChart(7),
+  ]);
+}
 
 init();
 
-// ── Background refresh every 30 minutes ───────────────────────────────────────
-setInterval(() => {
-  try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
-  scheduleLiveFetch(true); // forceCG = true
-}, 30 * 60 * 1000);
-
-// Mempool has generous limits — refresh every 90s
-// Blocks every 3 min — blocks only come every ~10 min anyway
-setInterval(fetchMempool, 90000);
-setInterval(fetchBlocks,  180000);
+// Auto-refresh intervals
+setInterval(fetchCoinGeckoMarket, 30000);
+setInterval(fetchGlobal, 60000);
+setInterval(fetchFearGreed, 300000);
+setInterval(fetchMempool, 30000);
+setInterval(fetchBlocks, 60000);
 </script>
 </body>
 </html>

@@ -484,30 +484,67 @@ let allNews = [];
 let activeFilter = 'all';
 let currentPage = 1;
 const PER_PAGE = 12;
-const CACHE_KEY = 'btc_news_cache';
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// News cache — localStorage so it survives page navigation
+const NEWS_CACHE_KEY = 'btc_news_cache_v2';
+const NEWS_CACHE_TTL = 30 * 60 * 1000; // 30 min — matches dashboard
+
+// Shared dashboard cache key (read price data from it, no extra fetch needed)
+const DASH_CACHE_KEY = 'btc_dash_v2';
+
+// ── Cache helpers ─────────────────────────────────────────────────────────────
+function readNewsCache() {
+  try {
+    const raw = localStorage.getItem(NEWS_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, items } = JSON.parse(raw);
+    if (Date.now() - ts < NEWS_CACHE_TTL && items?.length) return { ts, items };
+  } catch(e) {}
+  return null;
+}
+
+function writeNewsCache(items) {
+  try { localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ ts: Date.now(), items })); } catch(e) {}
+}
+
+function readDashCache() {
+  try {
+    const raw = localStorage.getItem(DASH_CACHE_KEY);
+    return raw ? JSON.parse(raw).data : null;
+  } catch(e) { return null; }
+}
 
 // ═══════════════════════════════════════
-// FETCH PRICE DATA
+// PRICE STRIP — reads dashboard cache first, only fetches if stale/missing
 // ═══════════════════════════════════════
+function applyPriceStrip(btc) {
+  if (!btc) return;
+  setText('ps-price', fmt.price(btc.current_price));
+  setText('ps-high',  fmt.price(btc.high_24h));
+  setText('ps-low',   fmt.price(btc.low_24h));
+  setText('ps-mcap',  fmt.compact(btc.market_cap));
+  const chEl = document.getElementById('ps-change');
+  if (chEl) {
+    chEl.textContent = fmt.pct(btc.price_change_percentage_24h);
+    chEl.style.color = btc.price_change_percentage_24h >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+}
+
 async function fetchPrice() {
+  // Use dashboard cache if fresh — zero network cost
+  const dash = readDashCache();
+  if (dash?.market?.[0]) { applyPriceStrip(dash.market[0]); return; }
+  // Fallback: fetch independently
   try {
     const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin&sparkline=false');
     const [btc] = await res.json();
-    if (!btc) return;
-    setText('ps-price', fmt.price(btc.current_price));
-    setText('ps-high', fmt.price(btc.high_24h));
-    setText('ps-low', fmt.price(btc.low_24h));
-    setText('ps-mcap', fmt.compact(btc.market_cap));
-    const chEl = document.getElementById('ps-change');
-    if (chEl) {
-      chEl.textContent = fmt.pct(btc.price_change_percentage_24h);
-      chEl.style.color = btc.price_change_percentage_24h >= 0 ? 'var(--green)' : 'var(--red)';
-    }
+    applyPriceStrip(btc);
   } catch(e) {}
 }
 
 async function fetchGlobal() {
+  const dash = readDashCache();
+  if (dash?.dominance) { setText('ps-dom', dash.dominance.btc?.toFixed(1) + '%'); return; }
   try {
     const res = await fetch('https://api.coingecko.com/api/v3/global');
     const { data } = await res.json();
@@ -516,6 +553,17 @@ async function fetchGlobal() {
 }
 
 async function fetchFearGreed() {
+  const dash = readDashCache();
+  if (dash?.fearGreed) {
+    const { value, label } = dash.fearGreed;
+    const fgEl = document.getElementById('ps-fg');
+    if (fgEl) {
+      fgEl.textContent = value + ' — ' + label;
+      fgEl.style.color = value <= 30 ? 'var(--red)' : value >= 70 ? 'var(--green)' : 'var(--btc)';
+    }
+    buildFGHistory(null); // will fetch independently for the 7-day history
+    return;
+  }
   try {
     const res = await fetch('https://api.alternative.me/fng/?limit=7');
     const { data } = await res.json();
@@ -527,22 +575,32 @@ async function fetchFearGreed() {
       fgEl.textContent = val + ' — ' + current.value_classification;
       fgEl.style.color = val <= 30 ? 'var(--red)' : val >= 70 ? 'var(--green)' : 'var(--btc)';
     }
-    const fgHistory = document.getElementById('fg-history');
-    if (fgHistory) {
-      fgHistory.innerHTML = data.slice(0,7).reverse().map((d,i) => {
-        const v = parseInt(d.value);
-        const color = v <= 30 ? 'var(--red)' : v <= 45 ? 'rgb(255,120,0)' : v <= 55 ? 'var(--text)' : v <= 75 ? 'var(--btc)' : 'var(--green)';
-        const date = i === 6 ? 'Today' : i === 5 ? 'Yesterday' : new Date(parseInt(d.timestamp)*1000).toLocaleDateString('en-US',{weekday:'short'});
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(247,147,26,0.06);">
-          <span style="font-size:10px;color:var(--dim);">${date}</span>
-          <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);margin:0 10px;border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${v}%;background:${color};border-radius:2px;"></div>
-          </div>
-          <span style="font-family:'Orbitron';font-size:11px;color:${color};min-width:26px;text-align:right;">${v}</span>
-        </div>`;
-      }).join('');
-    }
+    buildFGHistory(data);
   } catch(e) {}
+}
+
+async function buildFGHistory(data) {
+  if (!data) {
+    try {
+      const res = await fetch('https://api.alternative.me/fng/?limit=7');
+      const json = await res.json();
+      data = json.data;
+    } catch(e) { return; }
+  }
+  const fgHistory = document.getElementById('fg-history');
+  if (!fgHistory || !data) return;
+  fgHistory.innerHTML = data.slice(0,7).reverse().map((d,i) => {
+    const v = parseInt(d.value);
+    const color = v <= 30 ? 'var(--red)' : v <= 45 ? 'rgb(255,120,0)' : v <= 55 ? 'var(--text)' : v <= 75 ? 'var(--btc)' : 'var(--green)';
+    const date = i === 6 ? 'Today' : i === 5 ? 'Yesterday' : new Date(parseInt(d.timestamp)*1000).toLocaleDateString('en-US',{weekday:'short'});
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(247,147,26,0.06);">
+      <span style="font-size:10px;color:var(--dim);">${date}</span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);margin:0 10px;border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${v}%;background:${color};border-radius:2px;"></div>
+      </div>
+      <span style="font-family:'Orbitron';font-size:11px;color:${color};min-width:26px;text-align:right;">${v}</span>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════
@@ -682,33 +740,26 @@ function ingestArticles(articles) {
 }
 
 async function fetchNews(forceRefresh = false) {
-  // ── 1. Try cache first (instant render on repeat visits) ──────────────────
+  // ── 1. Serve from localStorage cache instantly ────────────────────────────
   if (!forceRefresh) {
-    try {
-      const raw = sessionStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const { ts, items } = JSON.parse(raw);
-        if (Date.now() - ts < CACHE_TTL && items.length) {
-          allNews = items;
-          renderNews();
-          buildBreakingTicker();
-          buildTrendingTopics();
-          buildSourcesList();
-          buildSentiment();
-          setText('article-count', allNews.length);
-          document.getElementById('last-fetch').textContent =
-            'CACHED ' + new Date(ts).toLocaleTimeString() + ' — refreshing…';
-          // Still refresh in background silently
-          fetchNews(true);
-          return;
-        }
-      }
-    } catch(e) { /* ignore bad cache */ }
+    const cached = readNewsCache();
+    if (cached) {
+      allNews = cached.items;
+      renderNews();
+      buildBreakingTicker();
+      buildTrendingTopics();
+      buildSourcesList();
+      buildSentiment();
+      setText('article-count', allNews.length);
+      document.getElementById('last-fetch').textContent =
+        'CACHED — ' + new Date(cached.ts).toLocaleTimeString();
+      return; // done — no network call, no spinner, instant
+    }
   }
 
-  // ── 2. Show progress bar ──────────────────────────────────────────────────
+  // ── 2. Fresh fetch: show progress bar, fire all feeds in parallel ──────────
   feedsLoaded = 0;
-  allNews = [];
+  if (forceRefresh) allNews = []; // clear stale data on manual refresh only
   document.getElementById('news-feed').innerHTML = `
     <div style="padding:30px 0;">
       <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:10px;" id="load-progress-label">CONNECTING TO FEEDS…</div>
@@ -717,41 +768,29 @@ async function fetchNews(forceRefresh = false) {
       </div>
     </div>`;
 
-  // ── 3. Kick off all feeds in parallel — render as each one lands ──────────
   const promises = FEEDS.map(feed =>
     fetchFeed(feed)
-      .then(articles => {
-        feedsLoaded++;
-        updateLoadProgress();
-        ingestArticles(articles);
-      })
-      .catch(err => {
-        feedsLoaded++;
-        updateLoadProgress();
-        console.warn(`Feed failed [${feed.source}]:`, err.message);
-      })
+      .then(articles => { feedsLoaded++; updateLoadProgress(); ingestArticles(articles); })
+      .catch(err    => { feedsLoaded++; updateLoadProgress(); console.warn(`Feed failed [${feed.source}]:`, err.message); })
   );
 
   await Promise.allSettled(promises);
 
-  // ── 4. If nothing loaded at all, show fallback ────────────────────────────
+  // ── 3. Fallback if every feed failed ──────────────────────────────────────
   if (!allNews.length) {
     document.getElementById('news-feed').innerHTML = `
-      <div style="text-align:center;padding:40px;color:var(--dim);font-size:12px;line-height:2;">
-        Could not reach any news feeds. This is usually a CORS or network issue.<br>
-        Read live Bitcoin news directly at:<br><br>
-        <a href="https://www.coindesk.com" target="_blank" style="color:var(--btc);">CoinDesk</a> &nbsp;|&nbsp;
-        <a href="https://cointelegraph.com" target="_blank" style="color:var(--btc);">CoinTelegraph</a> &nbsp;|&nbsp;
-        <a href="https://bitcoinmagazine.com" target="_blank" style="color:var(--btc);">Bitcoin Magazine</a> &nbsp;|&nbsp;
-        <a href="https://decrypt.co" target="_blank" style="color:var(--btc);">Decrypt</a>
+      <div style="text-align:center;padding:40px;color:var(--dim);font-size:12px;line-height:2.2;">
+        Could not reach any news feeds.<br>
+        <a href="https://www.coindesk.com"      target="_blank" style="color:var(--btc);">CoinDesk</a> &nbsp;|&nbsp;
+        <a href="https://cointelegraph.com"      target="_blank" style="color:var(--btc);">CoinTelegraph</a> &nbsp;|&nbsp;
+        <a href="https://bitcoinmagazine.com"    target="_blank" style="color:var(--btc);">Bitcoin Magazine</a> &nbsp;|&nbsp;
+        <a href="https://decrypt.co"             target="_blank" style="color:var(--btc);">Decrypt</a>
       </div>`;
     return;
   }
 
-  // ── 5. Save to cache ──────────────────────────────────────────────────────
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: allNews }));
-  } catch(e) { /* storage full — no problem */ }
+  // ── 4. Save to localStorage ────────────────────────────────────────────────
+  writeNewsCache(allNews);
 }
 
 // ═══════════════════════════════════════
@@ -974,7 +1013,7 @@ function openModal(idx) {
   document.getElementById('modal-meta').innerHTML = `
     <span style="color:var(--btc);">${item.source}</span>
     <span>${fmt.ago(item.ts)}</span>
-    <span>${new Date(item.ts*1000).toLocaleString()}</span>
+    <span>${new Date(item.ts).toLocaleString()}</span>
     ${sentimentBadge(item.sentiment)}
   `;
   document.getElementById('modal-body').innerHTML = item.body ? item.body.replace(/<[^>]+>/g,'') : 'No body text available. Click below to read the full article.';
@@ -992,21 +1031,33 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ═══════════════════════════════════════
 // INIT
+// Price strip: reads dashboard localStorage cache — instant, no fetch needed
+// News: fires last, completely non-blocking — page is fully usable while it loads
 // ═══════════════════════════════════════
-async function init() {
+function init() {
   buildUpcomingEvents();
-  await Promise.allSettled([
-    fetchPrice(),
-    fetchGlobal(),
-    fetchFearGreed(),
-    fetchNews(),
-  ]);
+
+  // Price strip — instant from shared dashboard cache, async fallback if stale
+  fetchPrice();
+  fetchGlobal();
+  fetchFearGreed();
+
+  // News loads last — doesn't block anything above
+  // If localStorage has fresh data it renders immediately,
+  // otherwise fetches in background while page is already usable
+  fetchNews();
 }
 
 init();
-setInterval(() => fetchNews(true), 5 * 60 * 1000); // hard refresh every 5 min
-setInterval(fetchPrice, 30000);
-setInterval(fetchFearGreed, 300000);
+
+// Refresh news once per 30 min (force = clear cache and re-fetch)
+setInterval(() => {
+  try { localStorage.removeItem(NEWS_CACHE_KEY); } catch(e) {}
+  fetchNews(true);
+}, 30 * 60 * 1000);
+
+// Price strip refreshes every 90s using dashboard cache passthrough
+setInterval(fetchPrice, 90000);
 </script>
 </body>
 </html>

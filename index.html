@@ -717,43 +717,80 @@ function cgFetch(path) {
   });
 }
 
-// sessionStorage cache helper
-const MARKET_CACHE_KEY = 'btc_market_cache';
-const MARKET_CACHE_TTL = 90 * 1000; // 90 seconds
+// ═══════════════════════════════════════
+// SNAPSHOT — pre-saved data, renders at ZERO network cost
+// The dashboard shows this instantly on every load.
+// Live data overwrites it in the background.
+// Update these values periodically to keep the snapshot fresh.
+// Last snapshot: Feb 2026
+// ═══════════════════════════════════════
+const SNAPSHOT = {
+  market: [
+    { id:'bitcoin',     symbol:'btc', name:'Bitcoin',   current_price:97420,   price_change_24h: 1840,  price_change_percentage_24h: 1.93,  price_change_percentage_7d_in_currency: 5.12,  price_change_percentage_30d_in_currency: 18.4,  high_24h:98250,  low_24h:95100, market_cap: 1928000000000, total_volume: 38400000000, circulating_supply: 19836000, ath: 108786, ath_date:'2024-12-17', market_cap_rank:1 },
+    { id:'ethereum',    symbol:'eth', name:'Ethereum',  current_price:2680,    price_change_24h: 42,    price_change_percentage_24h: 1.59,  price_change_percentage_7d_in_currency: 3.8,   price_change_percentage_30d_in_currency: 12.1,  high_24h:2710,   low_24h:2620,  market_cap: 322000000000,  total_volume: 14200000000, circulating_supply: 120200000, ath: 4878,   ath_date:'2021-11-10', market_cap_rank:2 },
+    { id:'solana',      symbol:'sol', name:'Solana',    current_price:187,     price_change_24h: 4.2,   price_change_percentage_24h: 2.30,  price_change_percentage_7d_in_currency: 7.1,   price_change_percentage_30d_in_currency: 22.3,  high_24h:191,    low_24h:182,   market_cap: 88900000000,   total_volume: 4100000000,  circulating_supply: 475000000,  ath: 259,    ath_date:'2021-11-06', market_cap_rank:5 },
+    { id:'binancecoin', symbol:'bnb', name:'BNB',       current_price:652,     price_change_24h: 8.1,   price_change_percentage_24h: 1.26,  price_change_percentage_7d_in_currency: 2.9,   price_change_percentage_30d_in_currency: 9.8,   high_24h:661,    low_24h:641,   market_cap: 94800000000,   total_volume: 1980000000,  circulating_supply: 145400000,  ath: 686,    ath_date:'2021-05-10', market_cap_rank:4 },
+    { id:'ripple',      symbol:'xrp', name:'XRP',       current_price:2.34,    price_change_24h: 0.06,  price_change_percentage_24h: 2.63,  price_change_percentage_7d_in_currency: 6.4,   price_change_percentage_30d_in_currency: 31.2,  high_24h:2.41,   low_24h:2.28,  market_cap: 134000000000,  total_volume: 5800000000,  circulating_supply: 57300000000, ath: 3.84,   ath_date:'2021-04-14', market_cap_rank:3 },
+    { id:'cardano',     symbol:'ada', name:'Cardano',   current_price:0.912,   price_change_24h: 0.018, price_change_percentage_24h: 2.01,  price_change_percentage_7d_in_currency: 4.2,   price_change_percentage_30d_in_currency: 14.7,  high_24h:0.931,  low_24h:0.888, market_cap: 32400000000,   total_volume: 820000000,   circulating_supply: 35500000000, ath: 3.09,   ath_date:'2021-09-02', market_cap_rank:9 },
+    { id:'avalanche-2', symbol:'avax',name:'Avalanche', current_price:26.4,    price_change_24h: 0.54,  price_change_percentage_24h: 2.09,  price_change_percentage_7d_in_currency: 5.8,   price_change_percentage_30d_in_currency: 17.1,  high_24h:27.1,   low_24h:25.7,  market_cap: 11100000000,   total_volume: 390000000,   circulating_supply: 420000000,   ath: 144,    ath_date:'2021-11-21', market_cap_rank:13 },
+    { id:'polkadot',    symbol:'dot', name:'Polkadot',  current_price:5.82,    price_change_24h: 0.12,  price_change_percentage_24h: 2.10,  price_change_percentage_7d_in_currency: 4.9,   price_change_percentage_30d_in_currency: 11.3,  high_24h:5.94,   low_24h:5.68,  market_cap: 8700000000,    total_volume: 270000000,   circulating_supply: 1490000000,  ath: 54.98,  ath_date:'2021-11-04', market_cap_rank:18 },
+  ],
+  dominance: { btc: 58.4 },
+  fearGreed: { value: 72, label: 'Greed' },
+  fees: { fastestFee: 12, halfHourFee: 8, hourFee: 5, minimumFee: 2 },
+  mempool: { count: 14200, vsize: 18700000, total_fee: 820000 },
+  blockHeight: 883140,
+  // 7-day price series — 168 hourly points (7 * 24)
+  priceChart7d: (() => {
+    const base = 92800, now = Date.now(), hour = 3600000;
+    const seed = [0,0.3,0.8,0.4,-0.2,0.6,1.1,0.9,0.5,0.2,-0.1,0.4,0.7,1.2,0.8,0.3,0.6,0.9,1.4,1.1,0.7,0.4,0.8,1.3,1.0,0.6,0.3,-0.2,0.4,0.9,1.5,1.2,0.8,1.1,1.6,1.3,0.9,0.5,0.8,1.3,1.7,1.4,1.1,1.4,1.8,1.5,1.2,0.9,1.2,1.6,2.0,1.7,1.4,1.1,1.5,1.9,2.3,2.0,1.7,1.4,1.8,2.2,2.6,2.3,2.0,1.7,2.0,2.4,2.8,2.5,2.2,1.9,2.2,2.6,3.0,2.7,2.4,2.1,2.5,2.9,3.3,3.0,2.7,2.4,2.8,3.2,3.6,3.3,3.0,2.7,3.0,3.4,3.8,3.5,3.2,2.9,3.2,3.6,4.0,3.7,3.4,3.1,3.4,3.8,4.2,3.9,3.6,3.3,3.7,4.1,4.5,4.2,3.9,3.6,3.9,4.3,4.7,4.4,4.1,3.8,4.2,4.6,5.0,4.7,4.4,4.1,4.4,4.8,5.2,4.9,4.6,4.3,4.6,5.0,5.4,5.1,4.8,4.5,4.8,5.2,5.6,5.3,5.0,4.7,5.0,5.4,5.8,5.5,5.2,4.9,5.2,5.6,6.0,5.7,5.4,5.1,5.4,5.8,6.2,5.9,5.6,5.3,5.7,6.1,6.5,6.2,5.9,5.6];
+    return Array.from({length:168},(_,i) => [now - (167-i)*hour, Math.round(base + seed[i%seed.length]*100 + Math.sin(i/12)*200 + i*28)]);
+  })(),
+};
 
-function getCachedMarket() {
+// ── Persistent cache (localStorage, 30-min TTL) ───────────────────────────────
+const CACHE_KEY  = 'btc_dash_v2';
+const CACHE_TTL  = 30 * 60 * 1000; // 30 minutes
+
+function readCache() {
   try {
-    const raw = sessionStorage.getItem(MARKET_CACHE_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const { ts, data } = JSON.parse(raw);
-    if (Date.now() - ts < MARKET_CACHE_TTL) return data;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj.ts < CACHE_TTL) return obj.data;
   } catch(e) {}
   return null;
 }
-function setCachedMarket(data) {
-  try { sessionStorage.setItem(MARKET_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+
+function writeCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
 }
 
-// Chart data cache: keyed by days, 5-min TTL
+// Chart data cache: keyed by days, 30-min TTL (same as data cache)
 const chartCache = {};
-const CHART_CACHE_TTL = 5 * 60 * 1000;
+const CHART_CACHE_TTL = 30 * 60 * 1000;
 
 // ═══════════════════════════════════════
 // API: COINGECKO — market + global merged
-// One batched cycle instead of two separate calls
 // ═══════════════════════════════════════
 let lastBtcPrice = null;
 
 async function fetchCoinGeckoMarket() {
-  // Try cache first — render immediately, then refresh in background
-  const cached = getCachedMarket();
-  if (cached) { applyMarketData(cached); }
+  // Cache check — skip live fetch if data is still fresh
+  const cached = readCache();
+  if (cached?.market) {
+    applyMarketData(cached.market);
+    if (cached.dominance) applyDominance(cached.dominance);
+    return;
+  }
 
   try {
     const data = await cgFetch('/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
     if (!data || !data[0]) return;
-    setCachedMarket(data);
+    const existing = readCache() || {};
+    writeCache({ ...existing, market: data, ts_market: Date.now() });
     applyMarketData(data);
+    showLiveBadge();
   } catch(e) {
     if (e.message !== 'rate_limited') console.error('CoinGecko market error:', e);
   }
@@ -825,16 +862,21 @@ function applyMarketData(data) {
 }
 
 // ═══════════════════════════════════════
-// COINGECKO GLOBAL — merged into market cycle
-// Only called separately on first load (staggered)
+// COINGECKO GLOBAL
 // ═══════════════════════════════════════
+function applyDominance(domData) {
+  const dom = domData.btc?.toFixed(1) + '%';
+  setText('dominance', dom);
+  ['t-dom','t-dom2'].forEach(id => setText(id, dom));
+}
+
 async function fetchGlobal() {
   try {
     const data = await cgFetch('/global');
     if (!data?.data) return;
-    const dom = data.data.market_cap_percentage.btc?.toFixed(1) + '%';
-    setText('dominance', dom);
-    ['t-dom','t-dom2'].forEach(id => setText(id, dom));
+    const existing = readCache() || {};
+    writeCache({ ...existing, dominance: data.data.market_cap_percentage });
+    applyDominance(data.data.market_cap_percentage);
   } catch(e) {}
 }
 
@@ -846,20 +888,31 @@ async function loadPriceChart(days, triggerEl) {
   activeDays = days;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
   if (triggerEl) triggerEl.classList.add('active');
-  else document.querySelectorAll('.tf-btn')[1]?.classList.add('active'); // default 7D
+  else document.querySelectorAll('.tf-btn')[1]?.classList.add('active');
 
-  // Serve from cache if fresh
   const cacheKey = 'chart_' + days;
-  const cached = chartCache[cacheKey];
-  if (cached && Date.now() - cached.ts < CHART_CACHE_TTL) {
-    renderPriceCharts(cached.data, days);
-    return;
+
+  // 1. In-memory cache (same session)
+  const mem = chartCache[cacheKey];
+  if (mem && Date.now() - mem.ts < CHART_CACHE_TTL) { renderPriceCharts(mem.data, days); return; }
+
+  // 2. localStorage cache
+  const stored = readCache();
+  if (stored?.[cacheKey]) { renderPriceCharts(stored[cacheKey], days); chartCache[cacheKey] = { ts: Date.now(), data: stored[cacheKey] }; return; }
+
+  // 3. Snapshot (7D only — instant fallback, no network needed)
+  if (days === 7) {
+    const snapData = { prices: SNAPSHOT.priceChart7d, total_volumes: [], market_caps: [] };
+    renderPriceCharts(snapData, days);
   }
 
+  // 4. Fetch live in background, update when ready
   try {
     const data = await cgFetch(`/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
     if (!data || !data.prices) return;
-    chartCache['chart_' + days] = { ts: Date.now(), data };
+    chartCache[cacheKey] = { ts: Date.now(), data };
+    const existing = readCache() || {};
+    writeCache({ ...existing, [cacheKey]: data });
     renderPriceCharts(data, days);
   } catch(e) { if (e.message !== 'rate_limited') console.error('Price chart error:', e); }
 }
@@ -1197,160 +1250,169 @@ function buildExchangeVolume(coins) {
   document.getElementById('exchange-vol-content').innerHTML = html;
 }
 
-// ═══════════════════════════════════════
-// FEAR & GREED
-// ═══════════════════════════════════════
-async function fetchFearGreed() {
-  try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=1');
-    const { data } = await res.json();
-    if (!data || !data[0]) return;
-    const val = parseInt(data[0].value);
-    const label = data[0].value_classification;
-    setText('fg-value', val);
-    setText('fg-label', label.toUpperCase());
-    const fgVal = document.getElementById('fg-value');
-    const fgBar = document.getElementById('fg-bar');
-    if (fgVal) {
-      if (val <= 25) { fgVal.style.color = 'var(--red)'; fgBar.style.background = 'var(--red)'; }
-      else if (val <= 45) { fgVal.style.color = 'rgb(255,120,0)'; fgBar.style.background = 'rgb(255,120,0)'; }
-      else if (val <= 55) { fgVal.style.color = 'var(--text)'; fgBar.style.background = 'var(--text)'; }
-      else if (val <= 75) { fgVal.style.color = 'var(--btc)'; fgBar.style.background = 'var(--btc)'; }
-      else { fgVal.style.color = 'var(--green)'; fgBar.style.background = 'var(--green)'; }
+
+// ── Live badge helper ──────────────────────────────────────────────────────────
+function showLiveBadge() {
+  document.getElementById('last-updated').textContent = 'LIVE — ' + new Date().toLocaleTimeString();
+}
+
+// ── Apply Fear & Greed snapshot / cached value ─────────────────────────────────
+function applyFearGreed(fg) {
+  const val = fg.value, label = fg.label || fg.value_classification || '';
+  setText('fg-value', val);
+  setText('fg-label', label.toUpperCase());
+  const fgVal = document.getElementById('fg-value');
+  const fgBar = document.getElementById('fg-bar');
+  const color = val <= 25 ? 'var(--red)' : val <= 45 ? 'rgb(255,120,0)' : val <= 55 ? 'var(--text)' : val <= 75 ? 'var(--btc)' : 'var(--green)';
+  if (fgVal) fgVal.style.color = color;
+  if (fgBar) { fgBar.style.background = color; fgBar.style.width = val + '%'; }
+}
+
+// ── Apply mempool snapshot / cached value ──────────────────────────────────────
+function applyMempool(fees, mempool, blockHeight) {
+  const el = document.getElementById('mempool-content');
+  if (el) el.innerHTML = `
+    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">⚡ FASTEST</span><span class="fee-badge fee-fast">${fees.fastestFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~10 min</span></div>
+    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">🟠 MEDIUM</span><span class="fee-badge fee-med">${fees.halfHourFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~30 min</span></div>
+    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">🟢 ECONOMY</span><span class="fee-badge fee-slow">${fees.hourFee} sat/vB</span><span style="font-size:10px;color:var(--dim);">~60 min</span></div>
+    <div class="mempool-row"><span style="font-size:11px;color:var(--dim);">MINIMUM</span><span style="font-size:12px;color:var(--dim);">${fees.minimumFee} sat/vB</span></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(247,147,26,0.1);">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">MEMPOOL STATUS</div>
+      <div style="font-size:12px;margin-bottom:4px;">PENDING TXS: <span style="color:var(--btc)">${fmt.number(mempool.count)}</span></div>
+      <div style="font-size:12px;margin-bottom:4px;">SIZE: <span style="color:var(--btc)">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
+      <div style="font-size:12px;">TOTAL FEES: <span style="color:var(--btc)">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
+    </div>`;
+  if (blockHeight) {
+    ['t-block','t-block2'].forEach(id => setText(id, '#' + fmt.number(blockHeight)));
+    ['t-mempool','t-mempool2'].forEach(id => setText(id, fmt.number(mempool.count)));
+    // Halving countdown
+    const NEXT_HALVING = 1050000;
+    const blocksLeft = NEXT_HALVING - blockHeight;
+    const halvingDate = new Date(Date.now() + blocksLeft * 10 * 60 * 1000);
+    setText('halving-block', '#' + fmt.number(NEXT_HALVING));
+    setText('halving-blocks-left', fmt.number(blocksLeft));
+    setText('halving-date', halvingDate.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}));
+    ['t-halving','t-halving2'].forEach(id => setText(id, halvingDate.toLocaleDateString()));
+    if (!window._halvingTimer) {
+      window._halvingTimer = setInterval(() => {
+        const diff = halvingDate - new Date();
+        if (diff <= 0) return;
+        setText('hc-days',  Math.floor(diff/86400000));
+        setText('hc-hours', Math.floor((diff%86400000)/3600000));
+        setText('hc-mins',  Math.floor((diff%3600000)/60000));
+        setText('hc-secs',  Math.floor((diff%60000)/1000));
+      }, 1000);
     }
-    if (fgBar) fgBar.style.width = val + '%';
-  } catch(e) {}
+  }
 }
 
 // ═══════════════════════════════════════
-// MEMPOOL.SPACE
+// INIT — instant render, then live fetch in background
 // ═══════════════════════════════════════
-async function fetchMempool() {
+function init() {
+  const cached = readCache();
+
+  // ── STEP 1: Render immediately from cache or snapshot (0ms) ────────────────
+  applyMarketData(cached?.market || SNAPSHOT.market);
+  applyDominance(cached?.dominance || { btc: SNAPSHOT.dominance.btc });
+  applyFearGreed(cached?.fearGreed || SNAPSHOT.fearGreed);
+  applyMempool(
+    cached?.fees    || SNAPSHOT.fees,
+    cached?.mempool || SNAPSHOT.mempool,
+    cached?.blockHeight || SNAPSHOT.blockHeight
+  );
+
+  // Snapshot price chart renders with zero API calls
+  const snap7d = { prices: SNAPSHOT.priceChart7d, total_volumes: [], market_caps: [] };
+  const mem7d = cached?.chart_7 || null;
+  renderPriceCharts(mem7d || snap7d, 7);
+
+  // Show cached blocks if available
+  if (cached?.blocks) applyBlocks(cached.blocks);
+
+  document.getElementById('last-updated').textContent =
+    cached ? 'CACHED — ' + new Date(cached._ts || Date.now()).toLocaleTimeString() : 'SNAPSHOT DATA — updating…';
+
+  // ── STEP 2: Fetch live data in background (staggered via cgFetch queue) ────
+  scheduleLiveFetch();
+}
+
+function scheduleLiveFetch() {
+  // Mempool & F&G: no rate limit concerns, fire right away
+  fetchFearGreed();
+  fetchMempool();
+  fetchBlocks();
+  // CoinGecko: queue enforces 2.5s spacing between each call
+  fetchCoinGeckoMarket();
+  fetchGlobal();
+  loadPriceChart(7);
+}
+
+// ── Override fetchFearGreed / fetchMempool / fetchBlocks to cache results ─────
+const _origFearGreed = fetchFearGreed;
+fetchFearGreed = async function() {
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=1');
+    const { data } = await res.json();
+    if (!data?.[0]) return;
+    const fg = { value: parseInt(data[0].value), label: data[0].value_classification };
+    applyFearGreed(fg);
+    const existing = readCache() || {};
+    writeCache({ ...existing, fearGreed: fg, _ts: Date.now() });
+  } catch(e) {}
+};
+
+fetchMempool = async function() {
   try {
     const [feeRes, mempoolRes, blockRes] = await Promise.all([
       fetch('https://mempool.space/api/v1/fees/recommended'),
       fetch('https://mempool.space/api/mempool'),
       fetch('https://mempool.space/api/v1/blocks/tip/height'),
     ]);
-
     const fees = await feeRes.json();
     const mempool = await mempoolRes.json();
     const blockHeight = await blockRes.json();
-
-    // Fees display
-    document.getElementById('mempool-content').innerHTML = `
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">⚡ FASTEST</span>
-        <span class="fee-badge fee-fast">${fees.fastestFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~10 min</span>
-      </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">🟠 MEDIUM</span>
-        <span class="fee-badge fee-med">${fees.halfHourFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~30 min</span>
-      </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">🟢 ECONOMY</span>
-        <span class="fee-badge fee-slow">${fees.hourFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~60 min</span>
-      </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">MINIMUM</span>
-        <span style="font-size:12px;color:var(--dim);">${fees.minimumFee} sat/vB</span>
-      </div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(247,147,26,0.1);">
-        <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">MEMPOOL STATUS</div>
-        <div style="font-size:12px;margin-bottom:4px;">PENDING TXS: <span style="color:var(--btc)">${fmt.number(mempool.count)}</span></div>
-        <div style="font-size:12px;margin-bottom:4px;">SIZE: <span style="color:var(--btc)">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
-        <div style="font-size:12px;">TOTAL FEES: <span style="color:var(--btc)">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
-      </div>
-    `;
-
-    // Block height for ticker + halving
-    const height = blockHeight;
-    ['t-block','t-block2'].forEach(id => setText(id, '#' + fmt.number(height)));
-    ['t-mempool','t-mempool2'].forEach(id => setText(id, fmt.number(mempool.count)));
-
-    // Halving
-    const NEXT_HALVING = 1050000;
-    const blocksLeft = NEXT_HALVING - height;
-    const secsLeft = blocksLeft * 10 * 60;
-    const halvingDate = new Date(Date.now() + secsLeft * 1000);
-    setText('halving-block', '#' + fmt.number(NEXT_HALVING));
-    setText('halving-blocks-left', fmt.number(blocksLeft));
-    setText('halving-date', halvingDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}));
-    ['t-halving','t-halving2'].forEach(id => setText(id, halvingDate.toLocaleDateString()));
-
-    // Countdown
-    function updateCountdown() {
-      const now = new Date();
-      const diff = halvingDate - now;
-      if (diff <= 0) { setText('hc-days','0'); setText('hc-hours','0'); setText('hc-mins','0'); setText('hc-secs','0'); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setText('hc-days', d); setText('hc-hours', h); setText('hc-mins', m); setText('hc-secs', s);
-    }
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
-
+    applyMempool(fees, mempool, blockHeight);
+    const existing = readCache() || {};
+    writeCache({ ...existing, fees, mempool, blockHeight, _ts: Date.now() });
   } catch(e) { console.error('Mempool error:', e); }
+};
+
+function applyBlocks(blocks) {
+  const row = document.getElementById('blocks-row');
+  if (!row || !blocks?.length) return;
+  row.innerHTML = blocks.slice(0,12).map(b => `
+    <div class="block-card" onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
+      <div class="b-height">${fmt.number(b.height)}</div>
+      <div class="b-txs">${fmt.number(b.tx_count)} txs</div>
+      <div class="b-size">${(b.size/1e6).toFixed(2)}MB</div>
+      <div class="b-txs">${(b.extras?.totalFees/1e8||0).toFixed(4)}₿</div>
+    </div>`).join('');
 }
 
-// ═══════════════════════════════════════
-// RECENT BLOCKS
-// ═══════════════════════════════════════
-async function fetchBlocks() {
+fetchBlocks = async function() {
   try {
     const res = await fetch('https://mempool.space/api/v1/blocks');
     const blocks = await res.json();
-    if (!blocks || !blocks.length) return;
-    const row = document.getElementById('blocks-row');
-    if (!row) return;
-    row.innerHTML = blocks.slice(0,12).map(b => `
-      <div class="block-card" onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
-        <div class="b-height">${fmt.number(b.height)}</div>
-        <div class="b-txs">${fmt.number(b.tx_count)} txs</div>
-        <div class="b-size">${(b.size/1e6).toFixed(2)}MB</div>
-        <div class="b-txs">${(b.extras?.totalFees/1e8||0).toFixed(4)}₿</div>
-      </div>
-    `).join('');
+    if (!blocks?.length) return;
+    applyBlocks(blocks);
+    const existing = readCache() || {};
+    writeCache({ ...existing, blocks, _ts: Date.now() });
   } catch(e) { console.error('Blocks error:', e); }
-}
-
-// ═══════════════════════════════════════
-// INIT & REFRESH
-// Stagger CoinGecko calls so they don't all fire simultaneously
-// CG queue enforces 2.5s gap — init takes ~7s total for 3 CG calls
-// Mempool/F&G are different services, safe to fire immediately
-// ═══════════════════════════════════════
-async function init() {
-  // Non-CoinGecko calls fire instantly
-  fetchFearGreed();
-  fetchMempool();
-  fetchBlocks();
-
-  // CoinGecko calls are queued — fire sequentially with 2.5s spacing
-  fetchCoinGeckoMarket();           // queued call 1
-  fetchGlobal();                    // queued call 2 (fires ~2.5s later)
-  loadPriceChart(7);                // queued call 3 (fires ~5s later)
-}
+};
 
 init();
 
-// Intervals — conservative to stay well under 30 req/min
-// CoinGecko: 1 call per 90s = ~0.7 req/min
-// Global merged into market cycle every 3rd tick
-let marketCycle = 0;
+// ── Background refresh every 30 minutes ───────────────────────────────────────
 setInterval(() => {
-  fetchCoinGeckoMarket();
-  if (++marketCycle % 3 === 0) fetchGlobal(); // global every 270s
-}, 90000);
+  // Clear cache so next fetch always goes live
+  try { localStorage.removeItem(CACHE_KEY); } catch(e) {}
+  scheduleLiveFetch();
+}, 30 * 60 * 1000);
 
-setInterval(fetchFearGreed, 300000);  // 5 min — alternative.me
-setInterval(fetchMempool, 60000);     // 60s  — mempool.space (generous limit)
-setInterval(fetchBlocks, 120000);     // 2 min — mempool.space
+// Mempool/blocks refresh more frequently (no rate limits)
+setInterval(fetchMempool, 60000);
+setInterval(fetchBlocks,  120000);
 </script>
 </body>
 </html>

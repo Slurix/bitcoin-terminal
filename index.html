@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bitcoin Intelligence — Live Dashboard</title>
+<title>Bitcoin — Live Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -492,10 +492,51 @@ canvas { width: 100% !important; }
   .bstats-strip { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 768px) {
+  .app { padding: 10px 12px; }
   .chart-row-3, .chart-row-2 { grid-template-columns: 1fr; }
   .metric-strip { grid-template-columns: repeat(2, 1fr); }
   .sidebar { grid-template-columns: 1fr; }
-  .supply-stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .supply-stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  header { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .header-center { order: 3; width: 100%; justify-content: center; }
+  .header-right { gap: 12px; }
+  #last-updated { display: none; }
+  .mcard-value.big { font-size: 17px; }
+  .hc-num { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  .app { padding: 8px 10px; }
+  header { padding: 10px 12px; gap: 8px; }
+  .logo-sub { display: none; }
+  .logo-icon { width: 30px; height: 30px; font-size: 15px; }
+  .logo-text { font-size: 13px; }
+  .live-pill { padding: 4px 9px; font-size: 10px; }
+  #clock { font-size: 10px; }
+  .metric-strip { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+  .mcard { padding: 10px 12px; }
+  .mcard-label { font-size: 9px; }
+  .mcard-value { font-size: 13px; }
+  .mcard-value.big { font-size: 15px; }
+  .mcard-sub { font-size: 10px; }
+  .card { padding: 14px; }
+  .card-title { font-size: 10px; margin-bottom: 10px; }
+  .dashboard-layout { gap: 8px; }
+  .chart-row-3, .chart-row-2 { gap: 8px; }
+  .sidebar { gap: 8px; }
+  .metric-strip { margin-bottom: 8px; }
+  .fg-ring { width: 140px; height: 70px; }
+  .fg-ring svg { width: 140px; height: 140px; }
+  .fg-ring-val { font-size: 26px; }
+  .supply-stat-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px; }
+  .hc-grid { gap: 6px; }
+  .hc-num { font-size: 18px; }
+  .hc-lbl { font-size: 8px; }
+  .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .bstats-strip { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+  .btable { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ticker-wrap { margin-top: 8px; }
+  .blocks-explorer-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .h-tab { padding: 5px 12px; font-size: 11px; }
 }
 </style>
 </head>
@@ -507,7 +548,7 @@ canvas { width: 100% !important; }
     <div class="logo-mark">
       <div class="logo-icon">₿</div>
       <div>
-        <div class="logo-text">Bitcoin Intelligence</div>
+        <div class="logo-text">Bitcoin</div>
         <div class="logo-sub">Live Market Dashboard</div>
       </div>
     </div>
@@ -628,73 +669,6 @@ canvas { width: 100% !important; }
           </div>
         </div>
 
-        <!-- Supply + Stats -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Bitcoin Supply</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-            <div style="font-size:11px;color:var(--text3);">Mined</div>
-            <div class="supply-track" style="flex:1;margin:0;">
-              <div class="supply-fill" id="supply-bar" style="width:0%"></div>
-            </div>
-            <div id="supply-pct-label" style="font-size:11px;color:var(--cyan);font-family:'JetBrains Mono';white-space:nowrap;">— %</div>
-            <div style="font-size:11px;color:var(--text3);">21M cap</div>
-          </div>
-          <div class="supply-stat-grid">
-            <div class="ssg-card">
-              <div class="ssg-label">Circulating</div>
-              <div class="ssg-value" id="supply-mined">—</div>
-              <div class="ssg-sub">BTC mined</div>
-            </div>
-            <div class="ssg-card">
-              <div class="ssg-label">Remaining</div>
-              <div class="ssg-value" style="color:var(--text3);" id="supply-left">—</div>
-              <div class="ssg-sub">to be mined</div>
-            </div>
-            <div class="ssg-card">
-              <div class="ssg-label">Max Supply</div>
-              <div class="ssg-value">21.000M</div>
-              <div class="ssg-sub">hard cap</div>
-            </div>
-            <div class="ssg-card">
-              <div class="ssg-label">Block Reward</div>
-              <div class="ssg-value">3.125</div>
-              <div class="ssg-sub">BTC / block</div>
-            </div>
-            <div class="ssg-card">
-              <div class="ssg-label">Market Cap</div>
-              <div class="ssg-value" id="supply-mcap">—</div>
-              <div class="ssg-sub">USD</div>
-            </div>
-            <div class="ssg-card">
-              <div class="ssg-label">24h Volume</div>
-              <div class="ssg-value" id="supply-vol">—</div>
-              <div class="ssg-sub">USD traded</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Global Table -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot"></span>Global Crypto Market</div>
-          <table class="data-table" id="global-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Asset</th>
-                <th>Price</th>
-                <th>24h %</th>
-                <th>7d %</th>
-                <th>Market Cap</th>
-                <th>Volume 24h</th>
-                <th>Dominance</th>
-              </tr>
-            </thead>
-            <tbody id="global-tbody">
-              <tr><td colspan="8" class="loading" style="height:60px;"></td></tr>
-            </tbody>
-          </table>
-        </div>
-
       </div><!-- /main-area -->
 
       <!-- SIDEBAR -->
@@ -711,8 +685,8 @@ canvas { width: 100% !important; }
                   stroke-dasharray="157 157" stroke-dashoffset="0" stroke-linecap="round"/>
                 <!-- value arc -->
                 <circle cx="60" cy="60" r="50" fill="none" stroke="var(--cyan)" stroke-width="12"
-                  stroke-dasharray="157 157" stroke-dashoffset="157" stroke-linecap="round"
-                  id="fg-arc" style="transition: stroke-dashoffset 1s ease, stroke 1s ease;"/>
+                  stroke-dasharray="0 314" stroke-dashoffset="0" stroke-linecap="round"
+                  id="fg-arc" style="transition: stroke-dasharray 1s ease, stroke 1s ease;"/>
               </svg>
               <div class="fg-ring-val" id="fg-value">—</div>
             </div>
@@ -767,6 +741,73 @@ canvas { width: 100% !important; }
 
       </div><!-- /sidebar -->
     </div><!-- /dashboard-layout -->
+
+    <!-- Supply + Stats (full width) -->
+    <div class="card" style="margin-top:12px;">
+      <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Bitcoin Supply</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="font-size:11px;color:var(--text3);">Mined</div>
+        <div class="supply-track" style="flex:1;margin:0;">
+          <div class="supply-fill" id="supply-bar" style="width:0%"></div>
+        </div>
+        <div id="supply-pct-label" style="font-size:11px;color:var(--cyan);font-family:'JetBrains Mono';white-space:nowrap;">— %</div>
+        <div style="font-size:11px;color:var(--text3);">21M cap</div>
+      </div>
+      <div class="supply-stat-grid" style="grid-template-columns:repeat(6,1fr);">
+        <div class="ssg-card">
+          <div class="ssg-label">Circulating</div>
+          <div class="ssg-value" id="supply-mined">—</div>
+          <div class="ssg-sub">BTC mined</div>
+        </div>
+        <div class="ssg-card">
+          <div class="ssg-label">Remaining</div>
+          <div class="ssg-value" style="color:var(--text3);" id="supply-left">—</div>
+          <div class="ssg-sub">to be mined</div>
+        </div>
+        <div class="ssg-card">
+          <div class="ssg-label">Max Supply</div>
+          <div class="ssg-value">21.000M</div>
+          <div class="ssg-sub">hard cap</div>
+        </div>
+        <div class="ssg-card">
+          <div class="ssg-label">Block Reward</div>
+          <div class="ssg-value">3.125</div>
+          <div class="ssg-sub">BTC / block</div>
+        </div>
+        <div class="ssg-card">
+          <div class="ssg-label">Market Cap</div>
+          <div class="ssg-value" id="supply-mcap">—</div>
+          <div class="ssg-sub">USD</div>
+        </div>
+        <div class="ssg-card">
+          <div class="ssg-label">24h Volume</div>
+          <div class="ssg-value" id="supply-vol">—</div>
+          <div class="ssg-sub">USD traded</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Table (full width) -->
+    <div class="card" style="margin-top:12px;">
+      <div class="card-title"><span class="ct-dot"></span>Global Crypto Market</div>
+      <table class="data-table" id="global-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Asset</th>
+            <th>Price</th>
+            <th>24h %</th>
+            <th>7d %</th>
+            <th>Market Cap</th>
+            <th>Volume 24h</th>
+            <th>Dominance</th>
+          </tr>
+        </thead>
+        <tbody id="global-tbody">
+          <tr><td colspan="8" class="loading" style="height:60px;"></td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <!-- TICKER -->
     <div class="ticker-wrap">
@@ -1312,8 +1353,10 @@ async function fetchFearGreed() {
     if (arc) {
       const circumference = 2 * Math.PI * 50; // r=50
       const halfCirc = circumference / 2;
-      const offset = halfCirc - (val / 100) * halfCirc;
-      arc.style.strokeDashoffset = offset + halfCirc;
+      const filled = (val / 100) * halfCirc;
+      // Set dasharray so only the filled portion is visible; dashoffset=0 starts at 9-o'clock (after -180deg rotate)
+      arc.style.strokeDasharray = filled + ' ' + circumference;
+      arc.style.strokeDashoffset = 0;
       // Color gradient
       let color;
       if (val <= 25)      { color = 'var(--red)';   }

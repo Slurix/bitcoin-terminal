@@ -323,6 +323,8 @@
     .col-7 { grid-column: span 12; }
     .col-8 { grid-column: span 12; }
     .col-9 { grid-column: span 12; }
+    .blocks-page-stats { grid-template-columns: repeat(3, 1fr); }
+    .blocks-charts-row { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 768px) {
     .col-3, .col-4, .col-6 { grid-column: span 12; }
@@ -330,10 +332,115 @@
     .price-hero { flex-wrap: wrap; }
     #big-price { font-size: 36px; }
     .halving-countdown { grid-template-columns: repeat(2, 1fr); }
+    .blocks-page-stats { grid-template-columns: repeat(2, 1fr); }
+    .blocks-charts-row { grid-template-columns: 1fr; }
   }
 
   /* Error state */
   .error-text { color: var(--red); font-size: 11px; text-align: center; padding: 20px; }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+  .nav-tab {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    position: relative;
+    bottom: -1px;
+  }
+  .nav-tab:hover { color: var(--btc); border-color: var(--border); }
+  .nav-tab.active {
+    color: var(--btc);
+    background: var(--panel);
+    border-color: var(--border);
+    border-bottom: 1px solid var(--panel);
+  }
+  .nav-tab .tab-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--dim);
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .nav-tab.active .tab-dot { background: var(--btc); box-shadow: 0 0 8px var(--btc-glow); }
+
+  /* PAGE SECTIONS */
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+
+  /* BLOCKS PAGE */
+  .blocks-page-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .bstat-card {
+    padding: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .bstat-card:hover { border-color: rgba(247,147,26,0.4); }
+  .bstat-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+  .bstat-value { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: var(--btc); }
+  .bstat-sub { font-size: 9px; color: var(--dim); margin-top: 4px; }
+
+  .blocks-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  /* BLOCKS FULL TABLE */
+  .blocks-full-table { width: 100%; border-collapse: collapse; }
+  .blocks-full-table th {
+    font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase;
+    padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .blocks-full-table td {
+    font-size: 11px; padding: 10px 12px; border-bottom: 1px solid rgba(247,147,26,0.05);
+    font-family: 'Share Tech Mono'; white-space: nowrap;
+  }
+  .blocks-full-table tr:hover td { background: rgba(247,147,26,0.04); cursor: pointer; }
+  .blocks-full-table .b-hash {
+    font-size: 10px; color: var(--dim); max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pool-badge {
+    display: inline-block; padding: 2px 8px; font-size: 9px; letter-spacing: 1px;
+    background: rgba(247,147,26,0.1); border: 1px solid rgba(247,147,26,0.2);
+    color: var(--btc);
+  }
+
+  .fee-bar-mini {
+    display: flex; height: 4px; border-radius: 2px; overflow: hidden; gap: 1px;
+    min-width: 80px;
+  }
+  .fee-segment { height: 100%; border-radius: 1px; }
+
+  .block-age { color: var(--dim); font-size: 10px; }
+
+  /* BLOCK SIZE INDICATOR */
+  .size-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .size-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--btc-dim), var(--btc)); min-width: 4px; }
 
   /* Table */
   .data-table { width: 100%; border-collapse: collapse; }
@@ -359,6 +466,19 @@
       <div id="last-updated">UPDATING...</div>
     </div>
   </header>
+
+  <!-- NAV TABS -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('dashboard', this)">
+      <span class="tab-dot"></span>DASHBOARD
+    </button>
+    <button class="nav-tab" onclick="switchTab('blocks', this)">
+      <span class="tab-dot"></span>LATEST BLOCKS
+    </button>
+  </nav>
+
+  <!-- ═══ DASHBOARD PAGE ═══ -->
+  <div class="page-section active" id="page-dashboard">
 
   <!-- PRICE HERO -->
   <div class="price-hero">
@@ -406,13 +526,13 @@
     <div class="panel col-8">
       <div class="panel-title">PRICE HISTORY (USD)</div>
       <div class="tf-buttons">
-        <button class="tf-btn" onclick="loadPriceChart(1)">1D</button>
-        <button class="tf-btn active" onclick="loadPriceChart(7)">7D</button>
-        <button class="tf-btn" onclick="loadPriceChart(30)">30D</button>
-        <button class="tf-btn" onclick="loadPriceChart(90)">3M</button>
-        <button class="tf-btn" onclick="loadPriceChart(365)">1Y</button>
-        <button class="tf-btn" onclick="loadPriceChart(1825)">5Y</button>
-        <button class="tf-btn" onclick="loadPriceChart('max')">MAX</button>
+        <button class="tf-btn" onclick="loadPriceChart(1, this)">1D</button>
+        <button class="tf-btn active" onclick="loadPriceChart(7, this)">7D</button>
+        <button class="tf-btn" onclick="loadPriceChart(30, this)">30D</button>
+        <button class="tf-btn" onclick="loadPriceChart(90, this)">3M</button>
+        <button class="tf-btn" onclick="loadPriceChart(365, this)">1Y</button>
+        <button class="tf-btn" onclick="loadPriceChart(1825, this)">5Y</button>
+        <button class="tf-btn" onclick="loadPriceChart('max', this)">MAX</button>
       </div>
       <canvas id="priceChart" height="220"></canvas>
     </div>
@@ -611,6 +731,95 @@
       <div class="ticker-item">NEXT HALVING<span id="t-halving2">—</span></div>
     </div>
   </div>
+</div><!-- end #page-dashboard -->
+
+<!-- ═══ BLOCKS PAGE ═══ -->
+<div class="page-section" id="page-blocks">
+
+  <!-- BLOCKS STATS ROW -->
+  <div class="blocks-page-stats">
+    <div class="bstat-card">
+      <div class="bstat-label">Current Height</div>
+      <div class="bstat-value" id="bp-height">—</div>
+      <div class="bstat-sub">chain tip</div>
+    </div>
+    <div class="bstat-card">
+      <div class="bstat-label">Avg Block Size</div>
+      <div class="bstat-value" id="bp-avg-size">—</div>
+      <div class="bstat-sub">last 15 blocks</div>
+    </div>
+    <div class="bstat-card">
+      <div class="bstat-label">Avg Tx Count</div>
+      <div class="bstat-value" id="bp-avg-txs">—</div>
+      <div class="bstat-sub">per block</div>
+    </div>
+    <div class="bstat-card">
+      <div class="bstat-label">Avg Total Fees</div>
+      <div class="bstat-value" id="bp-avg-fees">—</div>
+      <div class="bstat-sub">BTC per block</div>
+    </div>
+    <div class="bstat-card">
+      <div class="bstat-label">Avg Median Fee</div>
+      <div class="bstat-value" id="bp-avg-median-fee">—</div>
+      <div class="bstat-sub">sat/vByte</div>
+    </div>
+    <div class="bstat-card">
+      <div class="bstat-label">Avg Block Time</div>
+      <div class="bstat-value" id="bp-avg-time">—</div>
+      <div class="bstat-sub">minutes (target: 10)</div>
+    </div>
+  </div>
+
+  <!-- BLOCKS CHARTS -->
+  <div class="blocks-charts-row">
+    <div class="panel">
+      <div class="panel-title">BLOCK SIZE (MB)</div>
+      <canvas id="blockSizeChart" height="160"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">TX COUNT PER BLOCK</div>
+      <canvas id="blockTxChart" height="160"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">MINING POOL DISTRIBUTION</div>
+      <canvas id="poolChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- FULL BLOCKS TABLE -->
+  <div class="panel">
+    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>// BLOCK EXPLORER</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:9px;color:var(--dim);letter-spacing:1px;" id="blocks-last-updated">—</span>
+        <div class="live-badge"><div class="live-dot"></div>AUTO-REFRESH</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="blocks-full-table" id="blocks-full-table">
+        <thead>
+          <tr>
+            <th>HEIGHT</th>
+            <th>TIMESTAMP</th>
+            <th>AGE</th>
+            <th>MINER / POOL</th>
+            <th>TXS</th>
+            <th>SIZE</th>
+            <th>WEIGHT</th>
+            <th>TOTAL FEES</th>
+            <th>MEDIAN FEE</th>
+            <th>FEE RANGE</th>
+            <th>BLOCK HASH</th>
+          </tr>
+        </thead>
+        <tbody id="blocks-full-tbody">
+          <tr><td colspan="11" class="loading">SYNCING CHAIN DATA...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end #page-blocks -->
 </div>
 
 <script>
@@ -803,133 +1012,217 @@ async function fetchGlobal() {
 }
 
 // ═══════════════════════════════════════
-// PRICE CHART
+// TAB SWITCHING
 // ═══════════════════════════════════════
+function switchTab(tab, btn) {
+  document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'blocks') fetchBlocksFull();
+}
+
+// ═══════════════════════════════════════
+// PRICE CHART — with caching & error handling
+// ═══════════════════════════════════════
+const priceChartCache = {};
 let activeDays = 7;
-async function loadPriceChart(days) {
+let priceChartLoading = false;
+
+async function loadPriceChart(days, clickedBtn) {
+  if (priceChartLoading) return;
   activeDays = days;
+
+  // Update button states
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  event?.target?.classList?.add('active');
+  if (clickedBtn) {
+    clickedBtn.classList.add('active');
+  } else {
+    // Called from init — find the 7D button
+    const btns = document.querySelectorAll('.tf-btn');
+    btns.forEach(b => { if (b.textContent.trim() === '7D') b.classList.add('active'); });
+  }
 
+  // Show loading state
+  const canvas = document.getElementById('priceChart');
+  const loadingEl = document.getElementById('priceChart-loading');
+  if (canvas) canvas.style.opacity = '0.3';
+
+  // Check cache (5-minute TTL)
+  const cacheKey = String(days);
+  const now = Date.now();
+  if (priceChartCache[cacheKey] && (now - priceChartCache[cacheKey].ts) < 300000) {
+    renderPriceChart(priceChartCache[cacheKey].data, days);
+    if (canvas) canvas.style.opacity = '1';
+    return;
+  }
+
+  priceChartLoading = true;
   try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`);
+    const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}${days !== 'max' && days <= 90 ? '&interval=daily' : ''}`;
+    const res = await fetch(url);
+
+    if (res.status === 429) {
+      // Rate limited — show friendly error
+      showChartError('priceChart', 'RATE LIMITED — PLEASE WAIT 60s AND TRY AGAIN');
+      if (canvas) canvas.style.opacity = '1';
+      priceChartLoading = false;
+      return;
+    }
+
+    if (!res.ok) {
+      showChartError('priceChart', 'API ERROR ' + res.status);
+      if (canvas) canvas.style.opacity = '1';
+      priceChartLoading = false;
+      return;
+    }
+
     const data = await res.json();
-    if (!data.prices) return;
+    if (!data.prices || !data.prices.length) {
+      showChartError('priceChart', 'NO DATA RETURNED');
+      if (canvas) canvas.style.opacity = '1';
+      priceChartLoading = false;
+      return;
+    }
 
-    const labels = data.prices.map(p => {
-      const d = new Date(p[0]);
-      return days <= 1 ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
-           : days <= 30 ? d.toLocaleDateString([], {month:'short',day:'numeric'})
-           : d.toLocaleDateString([], {month:'short',year:'2-digit'});
-    });
-    const prices = data.prices.map(p => p[1]);
-    const volumes = data.total_volumes ? data.total_volumes.map(v => v[1]) : [];
-    const mcaps = data.market_caps ? data.market_caps.map(m => m[1]) : [];
+    priceChartCache[cacheKey] = { data, ts: now };
+    renderPriceChart(data, days);
+    if (canvas) canvas.style.opacity = '1';
 
-    // Gradient
-    const pCtx = document.getElementById('priceChart')?.getContext('2d');
-    if (!pCtx) return;
-    const grad = pCtx.createLinearGradient(0, 0, 0, 400);
-    grad.addColorStop(0, 'rgba(247,147,26,0.3)');
-    grad.addColorStop(1, 'rgba(247,147,26,0.0)');
+  } catch(e) {
+    showChartError('priceChart', 'CONNECTION ERROR');
+    if (canvas) canvas.style.opacity = '1';
+    console.error('Price chart error:', e);
+  }
+  priceChartLoading = false;
+}
 
-    makeChart('priceChart', {
-      type: 'line',
+function showChartError(canvasId, msg) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(255,51,102,0.7)';
+  ctx.font = "12px 'JetBrains Mono', monospace";
+  ctx.textAlign = 'center';
+  ctx.fillText('⚠ ' + msg, canvas.width / 2, canvas.height / 2);
+}
+
+function renderPriceChart(data, days) {
+  const labels = data.prices.map(p => {
+    const d = new Date(p[0]);
+    return days <= 1 ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+         : days <= 30 ? d.toLocaleDateString([], {month:'short',day:'numeric'})
+         : d.toLocaleDateString([], {month:'short',year:'2-digit'});
+  });
+  const prices = data.prices.map(p => p[1]);
+  const volumes = data.total_volumes ? data.total_volumes.map(v => v[1]) : [];
+  const mcaps = data.market_caps ? data.market_caps.map(m => m[1]) : [];
+
+  const pCtx = document.getElementById('priceChart')?.getContext('2d');
+  if (!pCtx) return;
+  const grad = pCtx.createLinearGradient(0, 0, 0, 400);
+  grad.addColorStop(0, 'rgba(247,147,26,0.3)');
+  grad.addColorStop(1, 'rgba(247,147,26,0.0)');
+
+  // Subsample for large datasets
+  const maxPts = 300;
+  const step = Math.max(1, Math.floor(labels.length / maxPts));
+  const sl = (arr) => arr.filter((_,i) => i % step === 0);
+
+  makeChart('priceChart', {
+    type: 'line',
+    data: {
+      labels: sl(labels),
+      datasets: [{
+        label: 'BTC Price',
+        data: sl(prices),
+        borderColor: BTC_ORANGE,
+        borderWidth: 1.5,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10,10,16,0.95)',
+          borderColor: 'rgba(247,147,26,0.3)',
+          borderWidth: 1,
+          titleColor: '#6b5c42',
+          bodyColor: '#f7931a',
+          callbacks: { label: c => fmt.price(c.parsed.y) }
+        }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+        y: {
+          ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) },
+          grid: { color: 'rgba(247,147,26,0.06)' }
+        }
+      }
+    }
+  });
+
+  if (volumes.length) {
+    makeChart('volumeChart', {
+      type: 'bar',
       data: {
-        labels,
+        labels: sl(labels),
         datasets: [{
-          label: 'BTC Price',
-          data: prices,
-          borderColor: BTC_ORANGE,
-          borderWidth: 1.5,
-          backgroundColor: grad,
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 4,
+          label: 'Volume',
+          data: sl(volumes),
+          backgroundColor: 'rgba(247,147,26,0.3)',
+          borderColor: 'rgba(247,147,26,0.6)',
+          borderWidth: 1,
         }]
       },
       options: {
         responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(10,10,16,0.95)',
-            borderColor: 'rgba(247,147,26,0.3)',
-            borderWidth: 1,
-            titleColor: '#6b5c42',
-            bodyColor: '#f7931a',
-            callbacks: { label: c => fmt.price(c.parsed.y) }
-          }
-        },
-        scales: {
-          x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
-          y: {
-            ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) },
-            grid: { color: 'rgba(247,147,26,0.06)' }
-          }
-        }
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
+        scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } }
       }
     });
+  }
 
-    // Volume chart
-    if (volumes.length) {
-      makeChart('volumeChart', {
-        type: 'bar',
+  if (mcaps.length) {
+    const mcCtx = document.getElementById('mcapChart')?.getContext('2d');
+    if (mcCtx) {
+      const mcGrad = mcCtx.createLinearGradient(0, 0, 0, 300);
+      mcGrad.addColorStop(0, 'rgba(0,255,136,0.2)');
+      mcGrad.addColorStop(1, 'rgba(0,255,136,0.0)');
+      makeChart('mcapChart', {
+        type: 'line',
         data: {
-          labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
+          labels: sl(labels),
           datasets: [{
-            label: 'Volume',
-            data: volumes.filter((_,i) => i % Math.max(1, Math.floor(volumes.length/30)) === 0),
-            backgroundColor: 'rgba(247,147,26,0.3)',
-            borderColor: 'rgba(247,147,26,0.6)',
-            borderWidth: 1,
+            label: 'Market Cap',
+            data: sl(mcaps),
+            borderColor: GREEN,
+            borderWidth: 1.5,
+            backgroundColor: mcGrad,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
           }]
         },
         options: {
           responsive: true,
           plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-          scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } }
+          scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } }
         }
       });
     }
+  }
 
-    // Market cap chart
-    if (mcaps.length) {
-      const mcCtx = document.getElementById('mcapChart')?.getContext('2d');
-      if (mcCtx) {
-        const mcGrad = mcCtx.createLinearGradient(0, 0, 0, 300);
-        mcGrad.addColorStop(0, 'rgba(0,255,136,0.2)');
-        mcGrad.addColorStop(1, 'rgba(0,255,136,0.0)');
-        makeChart('mcapChart', {
-          type: 'line',
-          data: {
-            labels: labels.filter((_,i) => i % Math.max(1, Math.floor(labels.length/30)) === 0),
-            datasets: [{
-              label: 'Market Cap',
-              data: mcaps.filter((_,i) => i % Math.max(1, Math.floor(mcaps.length/30)) === 0),
-              borderColor: GREEN,
-              borderWidth: 1.5,
-              backgroundColor: mcGrad,
-              fill: true,
-              tension: 0.3,
-              pointRadius: 0,
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-            scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } }
-          }
-        });
-      }
-    }
-
-    // Build advanced charts from price data
-    buildAdvancedCharts(prices, labels);
-
-  } catch(e) { console.error('Price chart error:', e); }
+  buildAdvancedCharts(prices, labels);
 }
 
 function buildAdvancedCharts(prices, labels) {
@@ -1315,7 +1608,7 @@ async function fetchMempool() {
 }
 
 // ═══════════════════════════════════════
-// RECENT BLOCKS
+// RECENT BLOCKS (dashboard mini view)
 // ═══════════════════════════════════════
 async function fetchBlocks() {
   try {
@@ -1333,6 +1626,171 @@ async function fetchBlocks() {
       </div>
     `).join('');
   } catch(e) { console.error('Blocks error:', e); }
+}
+
+// ═══════════════════════════════════════
+// BLOCKS FULL PAGE
+// ═══════════════════════════════════════
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts * 1000) / 1000);
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+async function fetchBlocksFull() {
+  try {
+    const res = await fetch('https://mempool.space/api/v1/blocks');
+    const blocks = await res.json();
+    if (!blocks || !blocks.length) return;
+
+    // ── STATS
+    const avgSize = (blocks.reduce((s,b) => s + b.size, 0) / blocks.length / 1e6).toFixed(2);
+    const avgTxs  = Math.round(blocks.reduce((s,b) => s + b.tx_count, 0) / blocks.length);
+    const avgFees = (blocks.reduce((s,b) => s + (b.extras?.totalFees||0), 0) / blocks.length / 1e8).toFixed(4);
+    const avgMedFee = (blocks.reduce((s,b) => s + (b.extras?.medianFee||0), 0) / blocks.length).toFixed(1);
+
+    // Average time between blocks
+    const times = [];
+    for (let i = 0; i < blocks.length - 1; i++) {
+      times.push(Math.abs(blocks[i].timestamp - blocks[i+1].timestamp));
+    }
+    const avgTime = times.length ? (times.reduce((a,b)=>a+b,0)/times.length/60).toFixed(1) : '—';
+
+    setText('bp-height', fmt.number(blocks[0].height));
+    setText('bp-avg-size', avgSize + ' MB');
+    setText('bp-avg-txs', fmt.number(avgTxs));
+    setText('bp-avg-fees', avgFees + ' BTC');
+    setText('bp-avg-median-fee', avgMedFee + ' sat/vB');
+    setText('bp-avg-time', avgTime);
+    setText('blocks-last-updated', 'UPDATED ' + new Date().toLocaleTimeString());
+
+    // ── CHARTS
+    const heights = blocks.map(b => '#' + fmt.number(b.height)).reverse();
+    const sizes   = blocks.map(b => (b.size/1e6).toFixed(3)).reverse();
+    const txCounts= blocks.map(b => b.tx_count).reverse();
+
+    makeChart('blockSizeChart', {
+      type: 'bar',
+      data: {
+        labels: heights,
+        datasets: [{
+          label: 'Size MB',
+          data: sizes,
+          backgroundColor: sizes.map(s => s > 1.5 ? 'rgba(247,147,26,0.7)' : 'rgba(247,147,26,0.35)'),
+          borderColor: 'rgba(247,147,26,0.8)',
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y + ' MB' } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, font: { size: 8 } }, grid: { display: false } },
+          y: { ticks: { callback: v => v + 'MB' }, grid: { color: 'rgba(247,147,26,0.06)' } }
+        }
+      }
+    });
+
+    makeChart('blockTxChart', {
+      type: 'bar',
+      data: {
+        labels: heights,
+        datasets: [{
+          label: 'Transactions',
+          data: txCounts,
+          backgroundColor: 'rgba(0,255,136,0.3)',
+          borderColor: 'rgba(0,255,136,0.6)',
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.number(c.parsed.y) + ' txs' } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, font: { size: 8 } }, grid: { display: false } },
+          y: { ticks: { callback: v => fmt.number(v) }, grid: { color: 'rgba(0,255,136,0.04)' } }
+        }
+      }
+    });
+
+    // Pool distribution pie
+    const poolCounts = {};
+    blocks.forEach(b => {
+      const pool = b.extras?.pool?.name || 'Unknown';
+      poolCounts[pool] = (poolCounts[pool] || 0) + 1;
+    });
+    const sorted = Object.entries(poolCounts).sort((a,b) => b[1]-a[1]);
+    const poolColors = ['rgba(247,147,26,0.85)','rgba(0,255,136,0.7)','rgba(100,180,255,0.7)','rgba(255,51,102,0.7)','rgba(200,100,255,0.7)','rgba(255,200,50,0.7)'];
+    makeChart('poolChart', {
+      type: 'doughnut',
+      data: {
+        labels: sorted.map(p => p[0]),
+        datasets: [{
+          data: sorted.map(p => p[1]),
+          backgroundColor: sorted.map((_,i) => poolColors[i % poolColors.length]),
+          borderColor: 'rgba(0,0,0,0.4)',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '55%',
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 8, color: '#6b5c42', font: { size: 9 } } },
+          tooltip: { callbacks: { label: c => c.label + ': ' + c.parsed + ' blocks' } }
+        }
+      }
+    });
+
+    // ── FULL TABLE
+    const tbody = document.getElementById('blocks-full-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = blocks.map(b => {
+      const fees = b.extras?.totalFees || 0;
+      const medFee = b.extras?.medianFee || 0;
+      const feeRange = b.extras?.feeRange || [];
+      const pool = b.extras?.pool?.name || 'Unknown';
+      const sizeMB = (b.size / 1e6).toFixed(3);
+      const weightMWU = (b.weight / 1e6).toFixed(3);
+      const fillPct = Math.min(100, (b.size / 1572864 * 100)).toFixed(0); // 1.5MB target
+
+      // Fee range mini bar
+      const feeBarHtml = feeRange.length >= 2
+        ? `<div class="fee-bar-mini">${feeRange.slice(0,-1).map((_,i) => {
+            const pct = 100 / (feeRange.length - 1);
+            const hue = i / (feeRange.length-2);
+            const color = `rgba(${Math.round(247*(1-hue)+255*hue)},${Math.round(147*(1-hue)+51*hue)},${Math.round(26*(1-hue)+102*hue)},0.8)`;
+            return `<div class="fee-segment" style="flex:1;background:${color};"></div>`;
+          }).join('')}</div><div style="font-size:9px;color:var(--dim);margin-top:2px;">${feeRange[0]}–${feeRange[feeRange.length-1]} sat/vB</div>`
+        : `<span style="color:var(--dim);font-size:10px;">—</span>`;
+
+      const ts = new Date(b.timestamp * 1000);
+      const tsStr = ts.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+      return `<tr onclick="window.open('https://mempool.space/block/${b.id}','_blank')" style="cursor:pointer;">
+        <td style="font-family:'Orbitron';font-size:11px;color:var(--btc);">${fmt.number(b.height)}</td>
+        <td style="font-size:10px;color:var(--text);">${tsStr}</td>
+        <td class="block-age">${timeAgo(b.timestamp)}</td>
+        <td><span class="pool-badge">${pool}</span></td>
+        <td style="color:var(--text);">${fmt.number(b.tx_count)}</td>
+        <td>
+          <div class="size-bar-wrap">
+            <div class="size-bar" style="width:${fillPct}px;max-width:60px;"></div>
+            <span style="font-size:10px;color:var(--text);">${sizeMB} MB</span>
+          </div>
+        </td>
+        <td style="color:var(--dim);font-size:10px;">${weightMWU} MWU</td>
+        <td style="color:var(--btc);">${(fees/1e8).toFixed(4)} ₿</td>
+        <td style="color:${medFee > 50 ? 'var(--red)' : medFee > 20 ? 'var(--btc)' : 'var(--green)'};">${medFee} sat/vB</td>
+        <td>${feeBarHtml}</td>
+        <td class="b-hash" title="${b.id}">${b.id.slice(0,20)}...${b.id.slice(-8)}</td>
+      </tr>`;
+    }).join('');
+
+  } catch(e) { console.error('Blocks full page error:', e); }
 }
 
 // ═══════════════════════════════════════
@@ -1357,6 +1815,12 @@ setInterval(fetchGlobal, 60000);
 setInterval(fetchFearGreed, 300000);
 setInterval(fetchMempool, 30000);
 setInterval(fetchBlocks, 60000);
+// Refresh blocks full page if on that tab
+setInterval(() => {
+  if (document.getElementById('page-blocks').classList.contains('active')) {
+    fetchBlocksFull();
+  }
+}, 60000);
 </script>
 </body>
 </html>

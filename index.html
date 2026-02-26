@@ -530,9 +530,6 @@
         <button class="tf-btn active" onclick="loadPriceChart(7, this)">7D</button>
         <button class="tf-btn" onclick="loadPriceChart(30, this)">30D</button>
         <button class="tf-btn" onclick="loadPriceChart(90, this)">3M</button>
-        <button class="tf-btn" onclick="loadPriceChart(365, this)">1Y</button>
-        <button class="tf-btn" onclick="loadPriceChart(1825, this)">5Y</button>
-        <button class="tf-btn" onclick="loadPriceChart('max', this)">MAX</button>
       </div>
       <canvas id="priceChart" height="220"></canvas>
     </div>
@@ -625,14 +622,6 @@
       <div class="panel-title">MEMPOOL & FEES</div>
       <div id="mempool-content">
         <div class="loading">QUERYING MEMPOOL...</div>
-      </div>
-    </div>
-
-    <!-- RECENT BLOCKS -->
-    <div class="panel col-8">
-      <div class="panel-title">LATEST BLOCKS</div>
-      <div class="blocks-row" id="blocks-row">
-        <div class="loading">SYNCING CHAIN...</div>
       </div>
     </div>
 
@@ -767,22 +756,6 @@
       <div class="bstat-label">Avg Block Time</div>
       <div class="bstat-value" id="bp-avg-time">—</div>
       <div class="bstat-sub">minutes (target: 10)</div>
-    </div>
-  </div>
-
-  <!-- BLOCKS CHARTS -->
-  <div class="blocks-charts-row">
-    <div class="panel">
-      <div class="panel-title">BLOCK SIZE (MB)</div>
-      <canvas id="blockSizeChart" height="160"></canvas>
-    </div>
-    <div class="panel">
-      <div class="panel-title">TX COUNT PER BLOCK</div>
-      <canvas id="blockTxChart" height="160"></canvas>
-    </div>
-    <div class="panel">
-      <div class="panel-title">MINING POOL DISTRIBUTION</div>
-      <canvas id="poolChart" height="160"></canvas>
     </div>
   </div>
 

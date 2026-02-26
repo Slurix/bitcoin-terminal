@@ -230,8 +230,8 @@
 
   /* FEAR GREED */
   .fg-container { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  #fg-value { font-family: 'Orbitron'; font-size: 52px; font-weight: 900; }
-  #fg-label { font-family: 'Orbitron'; font-size: 14px; letter-spacing: 3px; }
+  #fg-value { font-family: 'Orbitron'; font-size: 40px; font-weight: 900; }
+  #fg-label { font-family: 'Orbitron'; font-size: 11px; letter-spacing: 3px; }
   .fg-bar-wrap { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
   .fg-bar { height: 100%; border-radius: 4px; transition: width 1s ease; }
 
@@ -284,9 +284,9 @@
 
   /* HALVING */
   .halving-countdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
-  .hc-box { text-align: center; padding: 12px 8px; background: rgba(247,147,26,0.05); border: 1px solid rgba(247,147,26,0.1); }
-  .hc-num { font-family: 'Orbitron'; font-size: 28px; font-weight: 700; color: var(--btc); }
-  .hc-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-top: 4px; }
+  .hc-box { text-align: center; padding: 10px 6px; background: rgba(247,147,26,0.05); border: 1px solid rgba(247,147,26,0.1); }
+  .hc-num { font-family: 'Orbitron'; font-size: 22px; font-weight: 700; color: var(--btc); }
+  .hc-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-top: 3px; }
 
   /* PRICE TICKER AT BOTTOM */
   .ticker-wrap { overflow: hidden; border-top: 1px solid var(--border); margin-top: 20px; padding: 10px 0; }
@@ -523,19 +523,16 @@
   <div class="grid">
 
     <!-- PRICE CHART (big) -->
-    <div class="panel col-8">
-      <div class="panel-title">PRICE HISTORY (USD)</div>
-      <div class="tf-buttons">
-        <button class="tf-btn" onclick="loadPriceChart(1, this)">1D</button>
-        <button class="tf-btn active" onclick="loadPriceChart(7, this)">7D</button>
-        <button class="tf-btn" onclick="loadPriceChart(30, this)">30D</button>
-        <button class="tf-btn" onclick="loadPriceChart(90, this)">3M</button>
+    <div class="panel col-9">
+      <div class="panel-title" style="justify-content:space-between;">
+        <span>PRICE HISTORY — 3 MONTHS</span>
+        <span style="font-size:9px;color:var(--dim);letter-spacing:1px;">BTC / USD</span>
       </div>
-      <canvas id="priceChart" height="220"></canvas>
+      <canvas id="priceChart" height="190"></canvas>
     </div>
 
     <!-- FEAR & GREED + MARKET METRICS -->
-    <div class="panel col-4">
+    <div class="panel col-3">
       <div class="panel-title">FEAR & GREED INDEX</div>
       <div class="fg-container">
         <div id="fg-value" style="color:var(--dim);">—</div>
@@ -544,25 +541,25 @@
           <div class="fg-bar" id="fg-bar" style="width:0%;background:var(--dim);"></div>
         </div>
         <div style="display:flex;justify-content:space-between;width:100%;font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:2px;">
-          <span>EXTREME FEAR</span><span>EXTREME GREED</span>
+          <span>FEAR</span><span>GREED</span>
         </div>
       </div>
-      <div style="margin-top:20px;">
+      <div style="margin-top:16px;">
         <div class="metrics-grid">
           <div class="metric-card">
             <div class="m-label">RANK</div>
             <div class="m-value" id="mkt-rank">#—</div>
           </div>
           <div class="metric-card">
-            <div class="m-label">Price Change 7D</div>
+            <div class="m-label">7D CHANGE</div>
             <div class="m-value" id="change7d">—</div>
           </div>
           <div class="metric-card">
-            <div class="m-label">Price Change 30D</div>
+            <div class="m-label">30D CHANGE</div>
             <div class="m-value" id="change30d">—</div>
           </div>
           <div class="metric-card">
-            <div class="m-label">All Time High</div>
+            <div class="m-label">ATH</div>
             <div class="m-value" id="ath-metric">—</div>
             <div class="m-sub" id="ath-date">—</div>
           </div>
@@ -571,15 +568,60 @@
     </div>
 
     <!-- VOLUME CHART -->
-    <div class="panel col-6">
-      <div class="panel-title">TRADING VOLUME (30D)</div>
-      <canvas id="volumeChart" height="160"></canvas>
+    <div class="panel col-4">
+      <div class="panel-title">TRADING VOLUME — 3M</div>
+      <canvas id="volumeChart" height="150"></canvas>
     </div>
 
     <!-- MARKET CAP CHART -->
+    <div class="panel col-4">
+      <div class="panel-title">MARKET CAP — 3M</div>
+      <canvas id="mcapChart" height="150"></canvas>
+    </div>
+
+    <!-- OHLC -->
+    <div class="panel col-4">
+      <div class="panel-title">OHLC PRICE ACTION</div>
+      <canvas id="ohlcChart" height="150"></canvas>
+    </div>
+
+    <!-- MOVING AVERAGES -->
     <div class="panel col-6">
-      <div class="panel-title">MARKET CAP (30D)</div>
-      <canvas id="mcapChart" height="160"></canvas>
+      <div class="panel-title">MOVING AVERAGES — 3M</div>
+      <canvas id="maChart" height="150"></canvas>
+    </div>
+
+    <!-- RSI -->
+    <div class="panel col-6">
+      <div class="panel-title">RSI INDICATOR (14-DAY)</div>
+      <canvas id="rsiChart" height="130"></canvas>
+      <div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:var(--dim);">
+        <span>▬ <span style="color:var(--red);">OVERBOUGHT (70)</span></span>
+        <span>▬ <span style="color:var(--green);">OVERSOLD (30)</span></span>
+        <span>▬ <span style="color:var(--btc);">RSI</span></span>
+      </div>
+    </div>
+
+    <!-- BOLLINGER BANDS -->
+    <div class="panel col-4">
+      <div class="panel-title">BOLLINGER BANDS</div>
+      <canvas id="bollingerChart" height="150"></canvas>
+    </div>
+
+    <!-- RETURNS DISTRIBUTION -->
+    <div class="panel col-4">
+      <div class="panel-title">RETURNS DISTRIBUTION</div>
+      <canvas id="returnsChart" height="150"></canvas>
+    </div>
+
+    <!-- DOMINANCE + EXCHANGE stacked -->
+    <div class="panel col-4">
+      <div class="panel-title">CRYPTO DOMINANCE</div>
+      <canvas id="dominanceChart" height="130"></canvas>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--btc);margin-bottom:10px;font-family:'Orbitron';">// EXCHANGE VOLUME</div>
+        <div id="exchange-vol-content"><div class="loading" style="height:60px;">FETCHING...</div></div>
+      </div>
     </div>
 
     <!-- SUPPLY PANEL -->
@@ -594,26 +636,23 @@
           <span>LEFT: <span id="supply-left">—</span></span>
         </div>
       </div>
-      <div style="margin-top:12px;">
-        <canvas id="supplyDonut" height="160"></canvas>
-      </div>
+      <canvas id="supplyDonut" height="150"></canvas>
     </div>
 
     <!-- HALVING COUNTDOWN -->
     <div class="panel col-4">
       <div class="panel-title">NEXT HALVING COUNTDOWN</div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:4px;">EST. DATE: <span id="halving-date" style="color:var(--btc);">—</span></div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:4px;">BLOCK HEIGHT: <span id="halving-block" style="color:var(--btc);">—</span></div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:2px;">BLOCKS REMAINING: <span id="halving-blocks-left" style="color:var(--btc);">—</span></div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:3px;">EST. DATE: <span id="halving-date" style="color:var(--btc);">—</span></div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:3px;">BLOCK: <span id="halving-block" style="color:var(--btc);">—</span></div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:10px;">REMAINING: <span id="halving-blocks-left" style="color:var(--btc);">—</span></div>
       <div class="halving-countdown" id="halving-cd">
         <div class="hc-box"><div class="hc-num" id="hc-days">—</div><div class="hc-label">Days</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-hours">—</div><div class="hc-label">Hours</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-mins">—</div><div class="hc-label">Mins</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-secs">—</div><div class="hc-label">Secs</div></div>
+        <div class="hc-box"><div class="hc-num" id="hc-hours">—</div><div class="hc-label">Hrs</div></div>
+        <div class="hc-box"><div class="hc-num" id="hc-mins">—</div><div class="hc-label">Min</div></div>
+        <div class="hc-box"><div class="hc-num" id="hc-secs">—</div><div class="hc-label">Sec</div></div>
       </div>
-      <div style="margin-top:14px;font-size:10px;color:var(--dim);">
-        CURRENT REWARD: <span id="block-reward" style="color:var(--btc);">3.125 BTC</span><br>
-        AFTER HALVING: <span style="color:var(--dim);">1.5625 BTC</span>
+      <div style="margin-top:12px;font-size:10px;color:var(--dim);">
+        CURRENT REWARD: <span style="color:var(--btc);">3.125 BTC</span> &nbsp;→&nbsp; <span style="color:var(--dim);">1.5625 BTC</span>
       </div>
     </div>
 
@@ -623,55 +662,6 @@
       <div id="mempool-content">
         <div class="loading">QUERYING MEMPOOL...</div>
       </div>
-    </div>
-
-    <!-- PRICE CANDLESTICK PROXY (OHLC bar chart) -->
-    <div class="panel col-6">
-      <div class="panel-title">OHLC PRICE ACTION (14D)</div>
-      <canvas id="ohlcChart" height="180"></canvas>
-    </div>
-
-    <!-- DOMINANCE GAUGE -->
-    <div class="panel col-3">
-      <div class="panel-title">CRYPTO DOMINANCE</div>
-      <canvas id="dominanceChart" height="180"></canvas>
-    </div>
-
-    <!-- EXCHANGE VOLUME -->
-    <div class="panel col-3">
-      <div class="panel-title">EXCHANGE VOLUME</div>
-      <div id="exchange-vol-content">
-        <div class="loading">FETCHING...</div>
-      </div>
-    </div>
-
-    <!-- VOLATILITY -->
-    <div class="panel col-6">
-      <div class="panel-title">30D RETURNS DISTRIBUTION</div>
-      <canvas id="returnsChart" height="160"></canvas>
-    </div>
-
-    <!-- PRICE CORRELATION (moving avg) -->
-    <div class="panel col-6">
-      <div class="panel-title">MOVING AVERAGES (30D)</div>
-      <canvas id="maChart" height="160"></canvas>
-    </div>
-
-    <!-- RSI INDICATOR -->
-    <div class="panel col-6">
-      <div class="panel-title">RSI INDICATOR (14-DAY)</div>
-      <canvas id="rsiChart" height="140"></canvas>
-      <div style="display:flex;gap:20px;margin-top:8px;font-size:10px;color:var(--dim);">
-        <span>▬ <span style="color:var(--red);">OVERBOUGHT (70)</span></span>
-        <span>▬ <span style="color:var(--green);">OVERSOLD (30)</span></span>
-        <span>▬ <span style="color:var(--btc);">RSI</span></span>
-      </div>
-    </div>
-
-    <!-- BOLLINGER BANDS -->
-    <div class="panel col-6">
-      <div class="panel-title">BOLLINGER BANDS (20D)</div>
-      <canvas id="bollingerChart" height="140"></canvas>
     </div>
 
     <!-- GLOBAL STATS TABLE -->
@@ -999,22 +989,15 @@ function switchTab(tab, btn) {
 // PRICE CHART — with caching & error handling
 // ═══════════════════════════════════════
 const priceChartCache = {};
-let activeDays = 7;
+let activeDays = 90;
 let priceChartLoading = false;
 
 async function loadPriceChart(days, clickedBtn) {
   if (priceChartLoading) return;
   activeDays = days;
 
-  // Update button states
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  if (clickedBtn) {
-    clickedBtn.classList.add('active');
-  } else {
-    // Called from init — find the 7D button
-    const btns = document.querySelectorAll('.tf-btn');
-    btns.forEach(b => { if (b.textContent.trim() === '7D') b.classList.add('active'); });
-  }
+  // No timeframe buttons — locked to 3M
+  activeDays = days;
 
   // Show loading state
   const canvas = document.getElementById('priceChart');
@@ -1776,7 +1759,7 @@ async function init() {
     fetchFearGreed(),
     fetchMempool(),
     fetchBlocks(),
-    loadPriceChart(7),
+    loadPriceChart(90),
   ]);
 }
 

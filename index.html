@@ -3,839 +3,905 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>₿ BITCOIN TERMINAL — LIVE DASHBOARD</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<title>Bitcoin Intelligence — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root {
-    --btc: #f7931a;
-    --btc-dim: #c4720e;
-    --btc-glow: rgba(247, 147, 26, 0.4);
-    --green: #00ff88;
-    --red: #ff3366;
-    --bg: #050508;
-    --bg2: #0a0a10;
-    --bg3: #0f0f18;
-    --border: rgba(247, 147, 26, 0.2);
-    --text: #e8d5b0;
-    --dim: #6b5c42;
-    --panel: rgba(10, 10, 16, 0.95);
-  }
+:root {
+  --bg:        #07090f;
+  --surface:   #0d1117;
+  --surface2:  #161b27;
+  --surface3:  #1e2535;
+  --border:    rgba(255,255,255,0.06);
+  --border2:   rgba(255,255,255,0.1);
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  --cyan:      #22d3ee;
+  --cyan-dim:  rgba(34,211,238,0.12);
+  --cyan-glow: rgba(34,211,238,0.25);
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  --violet:    #a78bfa;
+  --violet-dim:rgba(167,139,250,0.12);
 
-  /* Grid scanlines overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.15) 2px,
-      rgba(0,0,0,0.15) 4px
-    );
-    pointer-events: none;
-    z-index: 1000;
-  }
+  --gold:      #fbbf24;
+  --gold-dim:  rgba(251,191,36,0.12);
 
-  /* Animated background */
-  .bg-anim {
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 60% at 10% 0%, rgba(247,147,26,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 80% at 90% 100%, rgba(247,147,26,0.04) 0%, transparent 60%),
-      var(--bg);
-    z-index: 0;
-  }
+  --green:     #4ade80;
+  --green-dim: rgba(74,222,128,0.12);
+  --red:       #fb7185;
+  --red-dim:   rgba(251,113,133,0.12);
 
-  .bg-grid {
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(247,147,26,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(247,147,26,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-    z-index: 0;
-  }
+  --text:      #e2e8f0;
+  --text2:     #94a3b8;
+  --text3:     #475569;
 
-  .wrap { position: relative; z-index: 1; padding: 20px; max-width: 1800px; margin: 0 auto; }
+  --r:         8px;
+  --r2:        12px;
+}
 
-  /* HEADER */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--btc), transparent);
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-  .logo {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--btc);
-    letter-spacing: 4px;
-    text-shadow: 0 0 20px var(--btc-glow);
-  }
-  .logo span { color: var(--text); font-weight: 400; font-size: 14px; letter-spacing: 2px; display: block; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  .header-right { display: flex; align-items: center; gap: 24px; }
+/* Subtle bg noise */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.4;
+}
 
-  .live-badge {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; letter-spacing: 2px; color: var(--green);
-  }
-  .live-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
-    animation: pulse-green 1.5s ease-in-out infinite;
-  }
-  @keyframes pulse-green {
-    0%,100% { box-shadow: 0 0 4px var(--green); }
-    50% { box-shadow: 0 0 12px var(--green), 0 0 20px var(--green); }
-  }
+/* Ambient glow */
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 900px; height: 600px;
+  background: radial-gradient(ellipse, rgba(34,211,238,0.04) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
 
-  #clock { font-family: 'Share Tech Mono'; font-size: 13px; color: var(--dim); }
-  #last-updated { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+.app { position: relative; z-index: 1; max-width: 1760px; margin: 0 auto; padding: 16px 20px; }
 
-  /* BIG PRICE */
-  .price-hero {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: center;
-    gap: 40px;
-    padding: 28px 32px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 20px;
-  }
-  .price-hero::before {
-    content: '₿';
-    position: absolute;
-    right: 20px; top: 50%;
-    transform: translateY(-50%);
-    font-size: 180px;
-    font-weight: 900;
-    color: rgba(247,147,26,0.04);
-    line-height: 1;
-    font-family: 'Orbitron';
-  }
+/* ── HEADER ──────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  margin-bottom: 12px;
+}
 
-  #big-price {
-    font-family: 'Orbitron', sans-serif;
-    font-size: clamp(36px, 5vw, 68px);
-    font-weight: 900;
-    color: var(--btc);
-    text-shadow: 0 0 30px var(--btc-glow);
-    letter-spacing: -1px;
-    animation: flicker 8s infinite;
-  }
-  @keyframes flicker {
-    0%,96%,100% { opacity: 1; }
-    97% { opacity: 0.9; }
-    98% { opacity: 1; }
-    99% { opacity: 0.95; }
-  }
+.logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+}
+.logo-text {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.3px;
+}
+.logo-sub {
+  font-size: 11px; color: var(--text3); font-weight: 400;
+  letter-spacing: 0.5px;
+}
 
-  #price-change {
-    font-family: 'Orbitron'; font-size: 22px; font-weight: 700;
-    transition: color 0.5s;
-  }
-  .price-meta { display: flex; flex-direction: column; gap: 6px; }
-  .price-meta-item { font-size: 11px; letter-spacing: 1px; color: var(--dim); }
-  .price-meta-item span { color: var(--text); font-size: 13px; }
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px;
+}
+.h-tab {
+  padding: 6px 18px;
+  border-radius: 100px;
+  font-size: 12px; font-weight: 500;
+  color: var(--text3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.h-tab:hover { color: var(--text2); }
+.h-tab.active {
+  background: var(--surface3);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
 
-  .price-stats { display: flex; gap: 32px; margin-left: auto; }
-  .stat-box { text-align: center; }
-  .stat-box .label { font-size: 10px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
-  .stat-box .value { font-family: 'Share Tech Mono'; font-size: 16px; color: var(--text); }
+.header-right {
+  display: flex; align-items: center; gap: 20px;
+}
+.live-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--green-dim);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-size: 11px; font-weight: 500; color: var(--green);
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  animation: livepulse 2s ease-in-out infinite;
+}
+@keyframes livepulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+  50%      { opacity: 0.8; box-shadow: 0 0 0 4px rgba(74,222,128,0); }
+}
+#clock { font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text3); }
+#last-updated { font-size: 11px; color: var(--text3); }
 
-  /* MAIN GRID */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 16px;
-  }
+/* ── PAGE SECTIONS ─────────────────────────────── */
+.page { display: none; }
+.page.active { display: block; }
 
-  /* PANEL */
-  .panel {
-    border: 1px solid var(--border);
-    background: var(--panel);
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.3s;
-  }
-  .panel:hover { border-color: rgba(247,147,26,0.4); }
+/* ── TOP METRIC STRIP ─────────────────────────── */
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.mcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+.mcard:hover { border-color: var(--border2); }
+.mcard-label {
+  font-size: 10px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text3); margin-bottom: 6px;
+}
+.mcard-value {
+  font-family: 'JetBrains Mono'; font-size: 16px;
+  font-weight: 500; color: var(--text);
+}
+.mcard-value.big {
+  font-size: 20px; font-weight: 600;
+  color: var(--cyan);
+}
+.mcard-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
 
-  .panel-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    color: var(--btc);
-    text-transform: uppercase;
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .panel-title::before { content: '//'; color: var(--dim); }
+/* ── MAIN LAYOUT ────────────────────────────────── */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 12px;
+  align-items: start;
+}
 
-  .col-3 { grid-column: span 3; }
-  .col-4 { grid-column: span 4; }
-  .col-5 { grid-column: span 5; }
-  .col-6 { grid-column: span 6; }
-  .col-7 { grid-column: span 7; }
-  .col-8 { grid-column: span 8; }
-  .col-9 { grid-column: span 9; }
-  .col-12 { grid-column: span 12; }
+/* ── SIDEBAR ──────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-  canvas { width: 100% !important; }
+/* ── CARDS ──────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 18px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
 
-  /* METRIC CARDS */
-  .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .metric-card {
-    padding: 14px;
-    background: rgba(247,147,26,0.04);
-    border: 1px solid rgba(247,147,26,0.1);
-  }
-  .metric-card .m-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-bottom: 6px; text-transform: uppercase; }
-  .metric-card .m-value { font-family: 'Share Tech Mono'; font-size: 15px; color: var(--btc); }
-  .metric-card .m-sub { font-size: 10px; color: var(--dim); margin-top: 3px; }
+.card-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text3);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .ct-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
 
-  /* FEAR GREED */
-  .fg-container { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  #fg-value { font-family: 'Orbitron'; font-size: 40px; font-weight: 900; }
-  #fg-label { font-family: 'Orbitron'; font-size: 11px; letter-spacing: 3px; }
-  .fg-bar-wrap { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
-  .fg-bar { height: 100%; border-radius: 4px; transition: width 1s ease; }
+canvas { width: 100% !important; }
 
-  /* MEMPOOL */
-  .mempool-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(247,147,26,0.06); font-size: 12px; }
-  .mempool-row:last-child { border-bottom: none; }
-  .fee-badge { padding: 2px 8px; font-size: 10px; letter-spacing: 1px; }
-  .fee-fast { background: rgba(255,51,102,0.15); color: var(--red); border: 1px solid rgba(255,51,102,0.3); }
-  .fee-med { background: rgba(247,147,26,0.15); color: var(--btc); border: 1px solid var(--border); }
-  .fee-slow { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.2); }
+/* ── MAIN CHARTS AREA ──────────────────────────── */
+.main-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-  /* BLOCKS */
-  .blocks-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
-  .block-card {
-    min-width: 90px;
-    padding: 10px;
-    background: rgba(247,147,26,0.05);
-    border: 1px solid rgba(247,147,26,0.15);
-    flex-shrink: 0;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .block-card:hover { background: rgba(247,147,26,0.12); border-color: var(--btc); }
-  .block-card .b-height { font-family: 'Orbitron'; font-size: 11px; color: var(--btc); margin-bottom: 4px; }
-  .block-card .b-txs { font-size: 10px; color: var(--dim); }
-  .block-card .b-size { font-size: 10px; color: var(--text); }
+.chart-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.chart-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
 
-  /* SPARKLINE STATS */
-  .exchange-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(247,147,26,0.06); }
-  .exchange-row:last-child { border-bottom: none; }
-  .ex-name { font-size: 12px; color: var(--text); }
-  .ex-vol { font-family: 'Share Tech Mono'; font-size: 12px; color: var(--btc); }
-  .ex-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.06); margin: 0 12px; border-radius: 2px; overflow: hidden; }
-  .ex-bar-fill { height: 100%; background: linear-gradient(90deg, var(--btc-dim), var(--btc)); border-radius: 2px; }
+/* ── FEAR & GREED ──────────────────────────────── */
+.fg-arc-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0 4px;
+}
+.fg-ring {
+  position: relative;
+  width: 120px; height: 60px;
+  margin-bottom: 8px;
+}
+.fg-ring svg {
+  position: absolute; top: 0; left: 0;
+  width: 120px; height: 120px;
+  transform: rotate(-180deg);
+}
+.fg-ring-val {
+  position: absolute;
+  bottom: -2px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono';
+  font-size: 28px; font-weight: 600;
+  color: var(--text);
+}
+#fg-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text2);
+  margin-top: 4px;
+}
+.fg-scale {
+  display: flex; justify-content: space-between; width: 100%;
+  font-size: 9px; color: var(--text3); margin-top: 8px;
+  letter-spacing: 0.5px;
+}
 
-  /* LOADING */
-  .loading {
-    display: flex; align-items: center; justify-content: center;
-    height: 100px; color: var(--dim); font-size: 12px; letter-spacing: 2px;
-    animation: blink 1s step-end infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
+/* ── METRIC PAIRS ─────────────────────────────── */
+.kv-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.kv-row:last-child { border-bottom: none; }
+.kv-key { color: var(--text3); font-size: 11px; }
+.kv-val { font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text); font-weight: 500; }
 
-  /* SUPPLY BAR */
-  .supply-bar-wrap { margin: 16px 0 8px; }
-  .supply-bar-track { height: 20px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; position: relative; }
-  .supply-bar-fill { height: 100%; background: linear-gradient(90deg, var(--btc-dim), var(--btc)); border-radius: 2px; transition: width 2s ease; }
-  .supply-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--dim); margin-top: 6px; }
+/* ── HALVING ──────────────────────────────────── */
+.hc-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  margin: 10px 0;
+}
+.hc-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px;
+  text-align: center;
+}
+.hc-num {
+  font-family: 'JetBrains Mono';
+  font-size: 24px; font-weight: 600;
+  color: var(--violet);
+}
+.hc-lbl {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text3); margin-top: 2px;
+}
 
-  /* HALVING */
-  .halving-countdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
-  .hc-box { text-align: center; padding: 10px 6px; background: rgba(247,147,26,0.05); border: 1px solid rgba(247,147,26,0.1); }
-  .hc-num { font-family: 'Orbitron'; font-size: 22px; font-weight: 700; color: var(--btc); }
-  .hc-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-top: 3px; }
+/* ── FEE TIERS ────────────────────────────────── */
+.fee-tier {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fee-tier:last-child { border-bottom: none; }
+.fee-label { font-size: 11px; color: var(--text3); }
+.fee-pill {
+  font-family: 'JetBrains Mono';
+  font-size: 11px; font-weight: 500;
+  padding: 3px 10px; border-radius: 100px;
+}
+.fp-fast { background: var(--red-dim); color: var(--red); }
+.fp-mid  { background: var(--gold-dim); color: var(--gold); }
+.fp-slow { background: var(--green-dim); color: var(--green); }
+.fp-min  { background: var(--surface2); color: var(--text3); }
+.fee-est { font-size: 10px; color: var(--text3); }
 
-  /* PRICE TICKER AT BOTTOM */
-  .ticker-wrap { overflow: hidden; border-top: 1px solid var(--border); margin-top: 20px; padding: 10px 0; }
-  .ticker { display: flex; gap: 60px; animation: scroll-ticker 30s linear infinite; white-space: nowrap; }
-  @keyframes scroll-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  .ticker-item { font-family: 'Share Tech Mono'; font-size: 12px; color: var(--dim); }
-  .ticker-item span { color: var(--btc); margin-left: 6px; }
+/* ── SUPPLY PROGRESS ──────────────────────────── */
+.supply-track {
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 100px;
+  overflow: hidden;
+  margin: 10px 0 6px;
+}
+.supply-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  transition: width 1.5s ease;
+}
+.supply-meta {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--text3);
+}
 
-  /* PULSE animation for value changes */
-  .flash-up { animation: flashup 0.5s ease-out; }
-  .flash-dn { animation: flashdn 0.5s ease-out; }
-  @keyframes flashup { from { color: var(--green); } to { } }
-  @keyframes flashdn { from { color: var(--red); } to { } }
+/* ── SUPPLY STAT GRID ─────────────────────────── */
+.supply-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.ssg-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+}
+.ssg-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 4px; }
+.ssg-value { font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 500; color: var(--text); }
+.ssg-sub   { font-size: 9px; color: var(--text3); margin-top: 2px; }
 
-  /* TIMEFRAME BUTTONS */
-  .tf-buttons { display: flex; gap: 6px; margin-bottom: 12px; }
-  .tf-btn {
-    padding: 4px 10px; font-size: 9px; letter-spacing: 1px;
-    font-family: 'JetBrains Mono'; cursor: pointer;
-    background: transparent; border: 1px solid rgba(247,147,26,0.2);
-    color: var(--dim); text-transform: uppercase;
-    transition: all 0.2s;
-  }
-  .tf-btn:hover, .tf-btn.active {
-    background: rgba(247,147,26,0.15);
-    border-color: var(--btc); color: var(--btc);
-  }
+/* ── DOMINANCE BAR CHART ─────────────────────── */
+/* handled by chartjs */
 
-  /* Responsive */
-  @media (max-width: 1200px) {
-    .col-3 { grid-column: span 6; }
-    .col-4 { grid-column: span 6; }
-    .col-5 { grid-column: span 12; }
-    .col-7 { grid-column: span 12; }
-    .col-8 { grid-column: span 12; }
-    .col-9 { grid-column: span 12; }
-    .blocks-page-stats { grid-template-columns: repeat(3, 1fr); }
-    .blocks-charts-row { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 768px) {
-    .col-3, .col-4, .col-6 { grid-column: span 12; }
-    .price-stats { display: none; }
-    .price-hero { flex-wrap: wrap; }
-    #big-price { font-size: 36px; }
-    .halving-countdown { grid-template-columns: repeat(2, 1fr); }
-    .blocks-page-stats { grid-template-columns: repeat(2, 1fr); }
-    .blocks-charts-row { grid-template-columns: 1fr; }
-  }
+/* ── GLOBAL TABLE ─────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text3);
+  padding: 8px 12px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  font-size: 12px; padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-family: 'JetBrains Mono'; font-weight: 400;
+  color: var(--text2);
+}
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+.data-table td:first-child { color: var(--text3); font-size: 11px; }
+.asset-symbol { font-weight: 600; color: var(--cyan); font-size: 11px; }
 
-  /* Error state */
-  .error-text { color: var(--red); font-size: 11px; text-align: center; padding: 20px; }
+/* ── LOADING ──────────────────────────────────── */
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 80px; color: var(--text3); font-size: 11px;
+  letter-spacing: 1px; font-weight: 500;
+}
+.loading::before {
+  content: '';
+  width: 16px; height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  /* NAV TABS */
-  .nav-tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0;
-  }
-  .nav-tab {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    padding: 10px 24px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-bottom: none;
-    color: var(--dim);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    position: relative;
-    bottom: -1px;
-  }
-  .nav-tab:hover { color: var(--btc); border-color: var(--border); }
-  .nav-tab.active {
-    color: var(--btc);
-    background: var(--panel);
-    border-color: var(--border);
-    border-bottom: 1px solid var(--panel);
-  }
-  .nav-tab .tab-dot {
-    display: inline-block;
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--dim);
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-  .nav-tab.active .tab-dot { background: var(--btc); box-shadow: 0 0 8px var(--btc-glow); }
+/* ── FLASH ANIMATIONS ─────────────────────────── */
+.flash-up { animation: fup 0.6s ease-out; }
+.flash-dn { animation: fdn 0.6s ease-out; }
+@keyframes fup { 0% { color: var(--green); } 100% { } }
+@keyframes fdn { 0% { color: var(--red);   } 100% { } }
 
-  /* PAGE SECTIONS */
-  .page-section { display: none; }
-  .page-section.active { display: block; }
+/* ── TICKER ──────────────────────────────────── */
+.ticker-wrap {
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  margin-top: 12px; padding: 10px 0;
+  background: var(--surface);
+  border-radius: var(--r);
+}
+.ticker {
+  display: flex; gap: 48px;
+  animation: ticker-scroll 30s linear infinite;
+  white-space: nowrap;
+}
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-item { font-size: 11px; color: var(--text3); font-weight: 500; }
+.ticker-item span { color: var(--cyan); margin-left: 6px; font-family: 'JetBrains Mono'; }
 
-  /* BLOCKS PAGE */
-  .blocks-page-stats {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .bstat-card {
-    padding: 16px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    text-align: center;
-  }
-  .bstat-card:hover { border-color: rgba(247,147,26,0.4); }
-  .bstat-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
-  .bstat-value { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: var(--btc); }
-  .bstat-sub { font-size: 9px; color: var(--dim); margin-top: 4px; }
+/* ── BLOCKS PAGE ─────────────────────────────── */
+.bstats-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bscard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.bscard:hover { border-color: var(--border2); }
+.bsc-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 8px; }
+.bsc-value { font-family: 'JetBrains Mono'; font-size: 17px; font-weight: 600; color: var(--cyan); }
+.bsc-sub   { font-size: 10px; color: var(--text3); margin-top: 4px; }
 
-  .blocks-charts-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
+/* Blocks table */
+.blocks-explorer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.btable { width: 100%; border-collapse: collapse; }
+.btable th {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text3);
+  padding: 8px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.btable td {
+  font-size: 11px; padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.025);
+  font-family: 'JetBrains Mono';
+  color: var(--text2); white-space: nowrap;
+}
+.btable tr:hover td { background: rgba(34,211,238,0.02); cursor: pointer; }
 
-  /* BLOCKS FULL TABLE */
-  .blocks-full-table { width: 100%; border-collapse: collapse; }
-  .blocks-full-table th {
-    font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase;
-    padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  .blocks-full-table td {
-    font-size: 11px; padding: 10px 12px; border-bottom: 1px solid rgba(247,147,26,0.05);
-    font-family: 'Share Tech Mono'; white-space: nowrap;
-  }
-  .blocks-full-table tr:hover td { background: rgba(247,147,26,0.04); cursor: pointer; }
-  .blocks-full-table .b-hash {
-    font-size: 10px; color: var(--dim); max-width: 180px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .pool-badge {
-    display: inline-block; padding: 2px 8px; font-size: 9px; letter-spacing: 1px;
-    background: rgba(247,147,26,0.1); border: 1px solid rgba(247,147,26,0.2);
-    color: var(--btc);
-  }
+.pool-badge {
+  display: inline-block; padding: 2px 8px;
+  font-size: 10px; font-weight: 500;
+  background: var(--violet-dim);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 4px; color: var(--violet);
+  font-family: 'Inter', sans-serif;
+}
+.size-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.size-bar {
+  height: 4px; border-radius: 100px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  min-width: 2px;
+}
+.b-hash { color: var(--text3); font-size: 10px; }
+.block-age { color: var(--text3); font-size: 10px; }
+.fee-bar-mini { display: flex; height: 3px; border-radius: 2px; overflow: hidden; gap: 1px; min-width: 80px; }
+.fee-segment { height: 100%; border-radius: 1px; }
 
-  .fee-bar-mini {
-    display: flex; height: 4px; border-radius: 2px; overflow: hidden; gap: 1px;
-    min-width: 80px;
-  }
-  .fee-segment { height: 100%; border-radius: 1px; }
-
-  .block-age { color: var(--dim); font-size: 10px; }
-
-  /* BLOCK SIZE INDICATOR */
-  .size-bar-wrap { display: flex; align-items: center; gap: 6px; }
-  .size-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--btc-dim), var(--btc)); min-width: 4px; }
-
-  /* Table */
-  .data-table { width: 100%; border-collapse: collapse; }
-  .data-table th { font-size: 9px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
-  .data-table td { font-size: 11px; padding: 8px 8px; border-bottom: 1px solid rgba(247,147,26,0.04); font-family: 'Share Tech Mono'; }
-  .data-table tr:hover td { background: rgba(247,147,26,0.03); }
+/* ── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 1200px) {
+  .dashboard-layout { grid-template-columns: 1fr; }
+  .sidebar { display: grid; grid-template-columns: 1fr 1fr; }
+  .metric-strip { grid-template-columns: repeat(3, 1fr); }
+  .bstats-strip { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .chart-row-3, .chart-row-2 { grid-template-columns: 1fr; }
+  .metric-strip { grid-template-columns: repeat(2, 1fr); }
+  .sidebar { grid-template-columns: 1fr; }
+  .supply-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
-<div class="bg-anim"></div>
-<div class="bg-grid"></div>
+<div class="app">
 
-<div class="wrap">
-  <!-- HEADER -->
+  <!-- ── HEADER ───────────────────────────────────── -->
   <header>
-    <div class="logo">
-      ₿ITCOIN TERMINAL
-      <span>REAL-TIME MARKET INTELLIGENCE DASHBOARD</span>
+    <div class="logo-mark">
+      <div class="logo-icon">₿</div>
+      <div>
+        <div class="logo-text">Bitcoin Intelligence</div>
+        <div class="logo-sub">Live Market Dashboard</div>
+      </div>
     </div>
+
+    <div class="header-center">
+      <button class="h-tab active" onclick="switchTab('dashboard', this)">Dashboard</button>
+      <button class="h-tab" onclick="switchTab('blocks', this)">Latest Blocks</button>
+    </div>
+
     <div class="header-right">
-      <div class="live-badge"><div class="live-dot"></div>LIVE DATA</div>
-      <div id="clock">--:--:--</div>
-      <div id="last-updated">UPDATING...</div>
+      <div class="live-pill"><div class="live-dot"></div>Live</div>
+      <div id="clock">--:--:-- UTC</div>
+      <div id="last-updated">Updating...</div>
     </div>
   </header>
 
-  <!-- NAV TABS -->
-  <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('dashboard', this)">
-      <span class="tab-dot"></span>DASHBOARD
-    </button>
-    <button class="nav-tab" onclick="switchTab('blocks', this)">
-      <span class="tab-dot"></span>LATEST BLOCKS
-    </button>
-  </nav>
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  DASHBOARD PAGE                               -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="page active" id="page-dashboard">
 
-  <!-- ═══ DASHBOARD PAGE ═══ -->
-  <div class="page-section active" id="page-dashboard">
-
-  <!-- PRICE HERO -->
-  <div class="price-hero">
-    <div>
-      <div style="font-size:10px;letter-spacing:3px;color:var(--dim);margin-bottom:8px;">BTC / USD</div>
-      <div id="big-price">$—</div>
-    </div>
-    <div class="price-meta">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
-        <div id="price-change" style="color:var(--dim);">±0.00%</div>
-        <div id="price-change-abs" style="font-size:14px;color:var(--dim);">($0.00)</div>
+    <!-- METRIC STRIP -->
+    <div class="metric-strip">
+      <div class="mcard">
+        <div class="mcard-label">BTC Price</div>
+        <div class="mcard-value big" id="big-price">$—</div>
+        <div class="mcard-sub" id="price-change" style="color:var(--text3);">±0.00%</div>
       </div>
-      <div class="price-meta-item">24H HIGH: <span id="price-high">—</span></div>
-      <div class="price-meta-item">24H LOW: <span id="price-low">—</span></div>
-      <div class="price-meta-item">ATH: <span id="price-ath">—</span></div>
-    </div>
-    <div class="price-stats">
-      <div class="stat-box">
-        <div class="label">Market Cap</div>
-        <div class="value" id="mkt-cap">—</div>
+      <div class="mcard">
+        <div class="mcard-label">24h Change</div>
+        <div class="mcard-value" id="price-change-abs" style="font-size:15px;">—</div>
+        <div class="mcard-sub">H: <span id="price-high">—</span> · L: <span id="price-low">—</span></div>
       </div>
-      <div class="stat-box">
-        <div class="label">24H Volume</div>
-        <div class="value" id="volume">—</div>
+      <div class="mcard">
+        <div class="mcard-label">Market Cap</div>
+        <div class="mcard-value" style="font-size:15px;" id="mkt-cap">—</div>
+        <div class="mcard-sub">Rank <span id="mkt-rank">—</span></div>
       </div>
-      <div class="stat-box">
-        <div class="label">BTC Dominance</div>
-        <div class="value" id="dominance">—</div>
+      <div class="mcard">
+        <div class="mcard-label">24h Volume</div>
+        <div class="mcard-value" style="font-size:15px;" id="volume">—</div>
+        <div class="mcard-sub">USD traded</div>
       </div>
-      <div class="stat-box">
-        <div class="label">Circulating</div>
-        <div class="value" id="circulating">—</div>
+      <div class="mcard">
+        <div class="mcard-label">BTC Dominance</div>
+        <div class="mcard-value" style="font-size:15px;" id="dominance">—</div>
+        <div class="mcard-sub">of total market</div>
       </div>
-      <div class="stat-box">
-        <div class="label">Total Supply</div>
-        <div class="value">21,000,000</div>
+      <div class="mcard">
+        <div class="mcard-label">All Time High</div>
+        <div class="mcard-value" style="font-size:15px;" id="ath-metric">—</div>
+        <div class="mcard-sub" id="ath-date">—</div>
       </div>
     </div>
-  </div>
 
-  <!-- MAIN GRID -->
-  <div class="grid">
+    <!-- MAIN LAYOUT -->
+    <div class="dashboard-layout">
 
-    <!-- PRICE CHART (big) -->
-    <div class="panel col-9">
-      <div class="panel-title" style="justify-content:space-between;">
-        <span>PRICE HISTORY — 3 MONTHS</span>
-        <span style="font-size:9px;color:var(--dim);letter-spacing:1px;">BTC / USD</span>
-      </div>
-      <canvas id="priceChart" height="190"></canvas>
-    </div>
+      <!-- MAIN CONTENT -->
+      <div class="main-area">
 
-    <!-- FEAR & GREED + MARKET METRICS -->
-    <div class="panel col-3">
-      <div class="panel-title">FEAR & GREED INDEX</div>
-      <div class="fg-container">
-        <div id="fg-value" style="color:var(--dim);">—</div>
-        <div id="fg-label" style="color:var(--dim);">LOADING</div>
-        <div class="fg-bar-wrap" style="width:100%;">
-          <div class="fg-bar" id="fg-bar" style="width:0%;background:var(--dim);"></div>
+        <!-- Price Chart -->
+        <div class="card">
+          <div class="card-title">
+            <span class="ct-dot"></span>
+            Price History · 3 Months
+            <span style="margin-left:auto;font-size:10px;color:var(--text3);font-weight:400;">BTC / USD</span>
+          </div>
+          <canvas id="priceChart" height="200"></canvas>
         </div>
-        <div style="display:flex;justify-content:space-between;width:100%;font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:2px;">
-          <span>FEAR</span><span>GREED</span>
-        </div>
-      </div>
-      <div style="margin-top:16px;">
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="m-label">RANK</div>
-            <div class="m-value" id="mkt-rank">#—</div>
+
+        <!-- Row: OHLC + Volume + Market Cap -->
+        <div class="chart-row-3">
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>OHLC Price Action</div>
+            <canvas id="ohlcChart" height="150"></canvas>
           </div>
-          <div class="metric-card">
-            <div class="m-label">7D CHANGE</div>
-            <div class="m-value" id="change7d">—</div>
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Trading Volume · 3M</div>
+            <canvas id="volumeChart" height="150"></canvas>
           </div>
-          <div class="metric-card">
-            <div class="m-label">30D CHANGE</div>
-            <div class="m-value" id="change30d">—</div>
-          </div>
-          <div class="metric-card">
-            <div class="m-label">ATH</div>
-            <div class="m-value" id="ath-metric">—</div>
-            <div class="m-sub" id="ath-date">—</div>
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></span>Market Cap · 3M</div>
+            <canvas id="mcapChart" height="150"></canvas>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- VOLUME CHART -->
-    <div class="panel col-4">
-      <div class="panel-title">TRADING VOLUME — 3M</div>
-      <canvas id="volumeChart" height="150"></canvas>
-    </div>
-
-    <!-- MARKET CAP CHART -->
-    <div class="panel col-4">
-      <div class="panel-title">MARKET CAP — 3M</div>
-      <canvas id="mcapChart" height="150"></canvas>
-    </div>
-
-    <!-- OHLC -->
-    <div class="panel col-4">
-      <div class="panel-title">OHLC PRICE ACTION</div>
-      <canvas id="ohlcChart" height="150"></canvas>
-    </div>
-
-    <!-- MOVING AVERAGES -->
-    <div class="panel col-6">
-      <div class="panel-title">MOVING AVERAGES — 3M</div>
-      <canvas id="maChart" height="150"></canvas>
-    </div>
-
-    <!-- RSI -->
-    <div class="panel col-6">
-      <div class="panel-title">RSI INDICATOR (14-DAY)</div>
-      <canvas id="rsiChart" height="130"></canvas>
-      <div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:var(--dim);">
-        <span>▬ <span style="color:var(--red);">OVERBOUGHT (70)</span></span>
-        <span>▬ <span style="color:var(--green);">OVERSOLD (30)</span></span>
-        <span>▬ <span style="color:var(--btc);">RSI</span></span>
-      </div>
-    </div>
-
-    <!-- BOLLINGER BANDS -->
-    <div class="panel col-4">
-      <div class="panel-title">BOLLINGER BANDS</div>
-      <canvas id="bollingerChart" height="150"></canvas>
-    </div>
-
-    <!-- RETURNS DISTRIBUTION -->
-    <div class="panel col-4">
-      <div class="panel-title">RETURNS DISTRIBUTION</div>
-      <canvas id="returnsChart" height="150"></canvas>
-    </div>
-
-    <!-- DOMINANCE + EXCHANGE stacked -->
-    <div class="panel col-4">
-      <div class="panel-title">CRYPTO DOMINANCE</div>
-      <canvas id="dominanceChart" height="130"></canvas>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-        <div style="font-size:9px;letter-spacing:2px;color:var(--btc);margin-bottom:10px;font-family:'Orbitron';">// EXCHANGE VOLUME</div>
-        <div id="exchange-vol-content"><div class="loading" style="height:60px;">FETCHING...</div></div>
-      </div>
-    </div>
-
-    <!-- SUPPLY PANEL -->
-    <div class="panel col-4">
-      <div class="panel-title">BITCOIN SUPPLY</div>
-      <div class="supply-bar-wrap">
-        <div class="supply-bar-track">
-          <div class="supply-bar-fill" id="supply-bar" style="width:0%"></div>
+        <!-- Row: MA + RSI -->
+        <div class="chart-row-2">
+          <div class="card">
+            <div class="card-title"><span class="ct-dot"></span>Moving Averages · 3M</div>
+            <canvas id="maChart" height="150"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>RSI Indicator · 14-Day</div>
+            <canvas id="rsiChart" height="130"></canvas>
+            <div style="display:flex;gap:16px;margin-top:8px;">
+              <span style="font-size:10px;color:var(--text3);">— <span style="color:var(--red)">Overbought 70</span></span>
+              <span style="font-size:10px;color:var(--text3);">— <span style="color:var(--green)">Oversold 30</span></span>
+              <span style="font-size:10px;color:var(--text3);">— <span style="color:var(--gold)">RSI</span></span>
+            </div>
+          </div>
         </div>
-        <div class="supply-labels">
-          <span>MINED: <span id="supply-mined">—</span></span>
-          <span>LEFT: <span id="supply-left">—</span></span>
+
+        <!-- Row: Bollinger + Returns + Dominance -->
+        <div class="chart-row-3">
+          <div class="card">
+            <div class="card-title"><span class="ct-dot"></span>Bollinger Bands · 20D</div>
+            <canvas id="bollingerChart" height="150"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Returns Distribution</div>
+            <canvas id="returnsChart" height="150"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="ct-dot" style="background:var(--cyan);box-shadow:0 0 6px var(--cyan);"></span>Market Dominance</div>
+            <canvas id="dominanceChart" height="150"></canvas>
+          </div>
+        </div>
+
+        <!-- Supply + Stats -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Bitcoin Supply</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <div style="font-size:11px;color:var(--text3);">Mined</div>
+            <div class="supply-track" style="flex:1;margin:0;">
+              <div class="supply-fill" id="supply-bar" style="width:0%"></div>
+            </div>
+            <div id="supply-pct-label" style="font-size:11px;color:var(--cyan);font-family:'JetBrains Mono';white-space:nowrap;">— %</div>
+            <div style="font-size:11px;color:var(--text3);">21M cap</div>
+          </div>
+          <div class="supply-stat-grid">
+            <div class="ssg-card">
+              <div class="ssg-label">Circulating</div>
+              <div class="ssg-value" id="supply-mined">—</div>
+              <div class="ssg-sub">BTC mined</div>
+            </div>
+            <div class="ssg-card">
+              <div class="ssg-label">Remaining</div>
+              <div class="ssg-value" style="color:var(--text3);" id="supply-left">—</div>
+              <div class="ssg-sub">to be mined</div>
+            </div>
+            <div class="ssg-card">
+              <div class="ssg-label">Max Supply</div>
+              <div class="ssg-value">21.000M</div>
+              <div class="ssg-sub">hard cap</div>
+            </div>
+            <div class="ssg-card">
+              <div class="ssg-label">Block Reward</div>
+              <div class="ssg-value">3.125</div>
+              <div class="ssg-sub">BTC / block</div>
+            </div>
+            <div class="ssg-card">
+              <div class="ssg-label">Market Cap</div>
+              <div class="ssg-value" id="supply-mcap">—</div>
+              <div class="ssg-sub">USD</div>
+            </div>
+            <div class="ssg-card">
+              <div class="ssg-label">24h Volume</div>
+              <div class="ssg-value" id="supply-vol">—</div>
+              <div class="ssg-sub">USD traded</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Table -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot"></span>Global Crypto Market</div>
+          <table class="data-table" id="global-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Asset</th>
+                <th>Price</th>
+                <th>24h %</th>
+                <th>7d %</th>
+                <th>Market Cap</th>
+                <th>Volume 24h</th>
+                <th>Dominance</th>
+              </tr>
+            </thead>
+            <tbody id="global-tbody">
+              <tr><td colspan="8" class="loading" style="height:60px;"></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /main-area -->
+
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+
+        <!-- Fear & Greed -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>Fear & Greed</div>
+          <div class="fg-arc-wrap">
+            <div class="fg-ring">
+              <svg viewBox="0 0 120 120">
+                <!-- bg arc -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"
+                  stroke-dasharray="157 157" stroke-dashoffset="0" stroke-linecap="round"/>
+                <!-- value arc -->
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--cyan)" stroke-width="12"
+                  stroke-dasharray="157 157" stroke-dashoffset="157" stroke-linecap="round"
+                  id="fg-arc" style="transition: stroke-dashoffset 1s ease, stroke 1s ease;"/>
+              </svg>
+              <div class="fg-ring-val" id="fg-value">—</div>
+            </div>
+            <div id="fg-label">Loading</div>
+            <div class="fg-scale">
+              <span>Fear</span><span>Neutral</span><span>Greed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Metrics -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot"></span>Market Metrics</div>
+          <div class="kv-row">
+            <span class="kv-key">7D Change</span>
+            <span class="kv-val" id="change7d">—</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">30D Change</span>
+            <span class="kv-val" id="change30d">—</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Circulating</span>
+            <span class="kv-val" id="circulating">—</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">ATH</span>
+            <span class="kv-val" id="price-ath">—</span>
+          </div>
+        </div>
+
+        <!-- Halving Countdown -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot" style="background:var(--violet);box-shadow:0 0 6px var(--violet);"></span>Next Halving</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Est. Date: <span id="halving-date" style="color:var(--text2);">—</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Block: <span id="halving-block" style="color:var(--text2);">—</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Remaining: <span id="halving-blocks-left" style="color:var(--cyan);">—</span></div>
+          <div class="hc-grid">
+            <div class="hc-box"><div class="hc-num" id="hc-days">—</div><div class="hc-lbl">Days</div></div>
+            <div class="hc-box"><div class="hc-num" id="hc-hours">—</div><div class="hc-lbl">Hrs</div></div>
+            <div class="hc-box"><div class="hc-num" id="hc-mins">—</div><div class="hc-lbl">Min</div></div>
+            <div class="hc-box"><div class="hc-num" id="hc-secs">—</div><div class="hc-lbl">Sec</div></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px;">Reward: <span style="color:var(--gold)">3.125 BTC</span> → <span style="color:var(--text3)">1.5625 BTC</span></div>
+        </div>
+
+        <!-- Mempool & Fees -->
+        <div class="card">
+          <div class="card-title"><span class="ct-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></span>Mempool & Fees</div>
+          <div id="mempool-content"><div class="loading" style="height:60px;"></div></div>
+        </div>
+
+      </div><!-- /sidebar -->
+    </div><!-- /dashboard-layout -->
+
+    <!-- TICKER -->
+    <div class="ticker-wrap">
+      <div class="ticker" id="ticker">
+        <div class="ticker-item">BTC/USD<span id="t-price">$—</span></div>
+        <div class="ticker-item">24H CHG<span id="t-change">—</span></div>
+        <div class="ticker-item">MARKET CAP<span id="t-mcap">—</span></div>
+        <div class="ticker-item">VOLUME<span id="t-vol">—</span></div>
+        <div class="ticker-item">DOMINANCE<span id="t-dom">—</span></div>
+        <div class="ticker-item">BLOCK HEIGHT<span id="t-block">—</span></div>
+        <div class="ticker-item">MEMPOOL TXS<span id="t-mempool">—</span></div>
+        <div class="ticker-item">NEXT HALVING<span id="t-halving">—</span></div>
+        <div class="ticker-item">BTC/USD<span id="t-price2">$—</span></div>
+        <div class="ticker-item">24H CHG<span id="t-change2">—</span></div>
+        <div class="ticker-item">MARKET CAP<span id="t-mcap2">—</span></div>
+        <div class="ticker-item">VOLUME<span id="t-vol2">—</span></div>
+        <div class="ticker-item">DOMINANCE<span id="t-dom2">—</span></div>
+        <div class="ticker-item">BLOCK HEIGHT<span id="t-block2">—</span></div>
+        <div class="ticker-item">MEMPOOL TXS<span id="t-mempool2">—</span></div>
+        <div class="ticker-item">NEXT HALVING<span id="t-halving2">—</span></div>
+      </div>
+    </div>
+
+  </div><!-- /page-dashboard -->
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  BLOCKS PAGE                                  -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="page" id="page-blocks">
+
+    <div class="bstats-strip">
+      <div class="bscard">
+        <div class="bsc-label">Block Height</div>
+        <div class="bsc-value" id="bp-height">—</div>
+        <div class="bsc-sub">chain tip</div>
+      </div>
+      <div class="bscard">
+        <div class="bsc-label">Avg Block Size</div>
+        <div class="bsc-value" id="bp-avg-size">—</div>
+        <div class="bsc-sub">last 15 blocks</div>
+      </div>
+      <div class="bscard">
+        <div class="bsc-label">Avg Tx Count</div>
+        <div class="bsc-value" id="bp-avg-txs">—</div>
+        <div class="bsc-sub">per block</div>
+      </div>
+      <div class="bscard">
+        <div class="bsc-label">Avg Total Fees</div>
+        <div class="bsc-value" id="bp-avg-fees">—</div>
+        <div class="bsc-sub">BTC / block</div>
+      </div>
+      <div class="bscard">
+        <div class="bsc-label">Avg Median Fee</div>
+        <div class="bsc-value" id="bp-avg-median-fee">—</div>
+        <div class="bsc-sub">sat/vByte</div>
+      </div>
+      <div class="bscard">
+        <div class="bsc-label">Avg Block Time</div>
+        <div class="bsc-value" id="bp-avg-time">—</div>
+        <div class="bsc-sub">min (target: 10)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="blocks-explorer-header">
+        <div class="card-title" style="margin-bottom:0;"><span class="ct-dot"></span>Block Explorer</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:10px;color:var(--text3);" id="blocks-last-updated">—</span>
+          <div class="live-pill"><div class="live-dot"></div>Auto-refresh</div>
         </div>
       </div>
-      <canvas id="supplyDonut" height="150"></canvas>
-    </div>
-
-    <!-- HALVING COUNTDOWN -->
-    <div class="panel col-4">
-      <div class="panel-title">NEXT HALVING COUNTDOWN</div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:3px;">EST. DATE: <span id="halving-date" style="color:var(--btc);">—</span></div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:3px;">BLOCK: <span id="halving-block" style="color:var(--btc);">—</span></div>
-      <div style="font-size:10px;color:var(--dim);margin-bottom:10px;">REMAINING: <span id="halving-blocks-left" style="color:var(--btc);">—</span></div>
-      <div class="halving-countdown" id="halving-cd">
-        <div class="hc-box"><div class="hc-num" id="hc-days">—</div><div class="hc-label">Days</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-hours">—</div><div class="hc-label">Hrs</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-mins">—</div><div class="hc-label">Min</div></div>
-        <div class="hc-box"><div class="hc-num" id="hc-secs">—</div><div class="hc-label">Sec</div></div>
-      </div>
-      <div style="margin-top:12px;font-size:10px;color:var(--dim);">
-        CURRENT REWARD: <span style="color:var(--btc);">3.125 BTC</span> &nbsp;→&nbsp; <span style="color:var(--dim);">1.5625 BTC</span>
-      </div>
-    </div>
-
-    <!-- MEMPOOL / FEES -->
-    <div class="panel col-4">
-      <div class="panel-title">MEMPOOL & FEES</div>
-      <div id="mempool-content">
-        <div class="loading">QUERYING MEMPOOL...</div>
+      <div style="overflow-x:auto;">
+        <table class="btable" id="blocks-full-table">
+          <thead>
+            <tr>
+              <th>Height</th>
+              <th>Timestamp</th>
+              <th>Age</th>
+              <th>Miner / Pool</th>
+              <th>Txs</th>
+              <th>Size</th>
+              <th>Weight</th>
+              <th>Total Fees</th>
+              <th>Median Fee</th>
+              <th>Fee Range</th>
+              <th>Block Hash</th>
+            </tr>
+          </thead>
+          <tbody id="blocks-full-tbody">
+            <tr><td colspan="11" class="loading" style="height:80px;"></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- GLOBAL STATS TABLE -->
-    <div class="panel col-12">
-      <div class="panel-title">GLOBAL CRYPTO MARKET SNAPSHOT</div>
-      <table class="data-table" id="global-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>ASSET</th>
-            <th>PRICE</th>
-            <th>24H %</th>
-            <th>7D %</th>
-            <th>MARKET CAP</th>
-            <th>VOLUME 24H</th>
-            <th>DOMINANCE</th>
-          </tr>
-        </thead>
-        <tbody id="global-tbody">
-          <tr><td colspan="8" class="loading">LOADING MARKET DATA...</td></tr>
-        </tbody>
-      </table>
-    </div>
+  </div><!-- /page-blocks -->
 
-  </div>
-
-  <!-- TICKER -->
-  <div class="ticker-wrap">
-    <div class="ticker" id="ticker">
-      <div class="ticker-item">BTC/USD<span id="t-price">$—</span></div>
-      <div class="ticker-item">24H CHANGE<span id="t-change">—</span></div>
-      <div class="ticker-item">MARKET CAP<span id="t-mcap">—</span></div>
-      <div class="ticker-item">VOLUME<span id="t-vol">—</span></div>
-      <div class="ticker-item">BTC DOMINANCE<span id="t-dom">—</span></div>
-      <div class="ticker-item">BLOCK HEIGHT<span id="t-block">—</span></div>
-      <div class="ticker-item">MEMPOOL TXS<span id="t-mempool">—</span></div>
-      <div class="ticker-item">NEXT HALVING<span id="t-halving">—</span></div>
-      <!-- duplicated for infinite scroll -->
-      <div class="ticker-item">BTC/USD<span id="t-price2">$—</span></div>
-      <div class="ticker-item">24H CHANGE<span id="t-change2">—</span></div>
-      <div class="ticker-item">MARKET CAP<span id="t-mcap2">—</span></div>
-      <div class="ticker-item">VOLUME<span id="t-vol2">—</span></div>
-      <div class="ticker-item">BTC DOMINANCE<span id="t-dom2">—</span></div>
-      <div class="ticker-item">BLOCK HEIGHT<span id="t-block2">—</span></div>
-      <div class="ticker-item">MEMPOOL TXS<span id="t-mempool2">—</span></div>
-      <div class="ticker-item">NEXT HALVING<span id="t-halving2">—</span></div>
-    </div>
-  </div>
-</div><!-- end #page-dashboard -->
-
-<!-- ═══ BLOCKS PAGE ═══ -->
-<div class="page-section" id="page-blocks">
-
-  <!-- BLOCKS STATS ROW -->
-  <div class="blocks-page-stats">
-    <div class="bstat-card">
-      <div class="bstat-label">Current Height</div>
-      <div class="bstat-value" id="bp-height">—</div>
-      <div class="bstat-sub">chain tip</div>
-    </div>
-    <div class="bstat-card">
-      <div class="bstat-label">Avg Block Size</div>
-      <div class="bstat-value" id="bp-avg-size">—</div>
-      <div class="bstat-sub">last 15 blocks</div>
-    </div>
-    <div class="bstat-card">
-      <div class="bstat-label">Avg Tx Count</div>
-      <div class="bstat-value" id="bp-avg-txs">—</div>
-      <div class="bstat-sub">per block</div>
-    </div>
-    <div class="bstat-card">
-      <div class="bstat-label">Avg Total Fees</div>
-      <div class="bstat-value" id="bp-avg-fees">—</div>
-      <div class="bstat-sub">BTC per block</div>
-    </div>
-    <div class="bstat-card">
-      <div class="bstat-label">Avg Median Fee</div>
-      <div class="bstat-value" id="bp-avg-median-fee">—</div>
-      <div class="bstat-sub">sat/vByte</div>
-    </div>
-    <div class="bstat-card">
-      <div class="bstat-label">Avg Block Time</div>
-      <div class="bstat-value" id="bp-avg-time">—</div>
-      <div class="bstat-sub">minutes (target: 10)</div>
-    </div>
-  </div>
-
-  <!-- FULL BLOCKS TABLE -->
-  <div class="panel">
-    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>// BLOCK EXPLORER</span>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="font-size:9px;color:var(--dim);letter-spacing:1px;" id="blocks-last-updated">—</span>
-        <div class="live-badge"><div class="live-dot"></div>AUTO-REFRESH</div>
-      </div>
-    </div>
-    <div style="overflow-x:auto;">
-      <table class="blocks-full-table" id="blocks-full-table">
-        <thead>
-          <tr>
-            <th>HEIGHT</th>
-            <th>TIMESTAMP</th>
-            <th>AGE</th>
-            <th>MINER / POOL</th>
-            <th>TXS</th>
-            <th>SIZE</th>
-            <th>WEIGHT</th>
-            <th>TOTAL FEES</th>
-            <th>MEDIAN FEE</th>
-            <th>FEE RANGE</th>
-            <th>BLOCK HASH</th>
-          </tr>
-        </thead>
-        <tbody id="blocks-full-tbody">
-          <tr><td colspan="11" class="loading">SYNCING CHAIN DATA...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-</div><!-- end #page-blocks -->
-</div>
+</div><!-- /app -->
 
 <script>
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // UTILITIES
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 const fmt = {
-  price: v => v != null ? '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—',
-  compact: v => {
-    if (!v) return '—';
-    if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
-    if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
-    if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
-    return '$' + v.toLocaleString();
-  },
-  pct: v => v != null ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—',
-  btc: v => v != null ? Number(v).toLocaleString('en-US', {maximumFractionDigits:0}) + ' BTC' : '—',
-  number: v => v != null ? Number(v).toLocaleString() : '—',
+  price:   v => v != null ? '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—',
+  compact: v => { if (!v) return '—'; if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T'; if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B'; if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M'; return '$' + v.toLocaleString(); },
+  pct:     v => v != null ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—',
+  number:  v => v != null ? Number(v).toLocaleString() : '—',
 };
 
-function setColor(el, val) {
-  if (!el) return;
-  el.style.color = val > 0 ? 'var(--green)' : val < 0 ? 'var(--red)' : 'var(--dim)';
-}
-
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function setColor(el, val) { if (!el) return; el.style.color = val > 0 ? 'var(--green)' : val < 0 ? 'var(--red)' : 'var(--text3)'; }
 
 // Clock
-function updateClock() {
-  document.getElementById('clock').textContent = new Date().toUTCString().slice(17, 25) + ' UTC';
-}
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(() => { setText('clock', new Date().toUTCString().slice(17, 25) + ' UTC'); }, 1000);
+setText('clock', new Date().toUTCString().slice(17, 25) + ' UTC');
 
-// Chart defaults
-Chart.defaults.color = '#6b5c42';
-Chart.defaults.borderColor = 'rgba(247,147,26,0.08)';
+// Chart.js defaults
+Chart.defaults.color = '#475569';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 10;
 
-const BTC_ORANGE = 'rgba(247,147,26,1)';
-const BTC_FILL = 'rgba(247,147,26,0.1)';
-const GREEN = 'rgba(0,255,136,1)';
-const RED = 'rgba(255,51,102,1)';
+const CYAN    = 'rgba(34,211,238,1)';
+const CYAN_F  = 'rgba(34,211,238,0.12)';
+const VIOLET  = 'rgba(167,139,250,1)';
+const VIOLET_F= 'rgba(167,139,250,0.12)';
+const GREEN   = 'rgba(74,222,128,1)';
+const GREEN_F = 'rgba(74,222,128,0.12)';
+const RED     = 'rgba(251,113,133,1)';
+const RED_F   = 'rgba(251,113,133,0.12)';
+const GOLD    = 'rgba(251,191,36,1)';
+const GOLD_F  = 'rgba(251,191,36,0.1)';
 
-// ═══════════════════════════════════════
-// CHARTS REGISTRY
-// ═══════════════════════════════════════
 const charts = {};
-
 function makeChart(id, config) {
   const ctx = document.getElementById(id)?.getContext('2d');
   if (!ctx) return null;
@@ -844,167 +910,39 @@ function makeChart(id, config) {
   return charts[id];
 }
 
-// ═══════════════════════════════════════
-// API: COINGECKO
-// ═══════════════════════════════════════
-let lastBtcPrice = null;
+const tooltipDefaults = {
+  backgroundColor: 'rgba(13,17,23,0.95)',
+  borderColor: 'rgba(255,255,255,0.08)',
+  borderWidth: 1,
+  titleColor: '#94a3b8',
+  bodyColor: '#e2e8f0',
+  padding: 10,
+  cornerRadius: 8,
+};
 
-async function fetchCoinGeckoMarket() {
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
-    const data = await res.json();
-    if (!data || !data[0]) return;
-
-    const btc = data[0];
-    const price = btc.current_price;
-    const change24 = btc.price_change_percentage_24h;
-    const change7 = btc.price_change_percentage_7d_in_currency;
-    const change30 = btc.price_change_percentage_30d_in_currency;
-
-    // Big price
-    const bigPrice = document.getElementById('big-price');
-    if (bigPrice) {
-      const wasPrice = lastBtcPrice;
-      bigPrice.textContent = fmt.price(price);
-      if (wasPrice) {
-        bigPrice.classList.remove('flash-up','flash-dn');
-        void bigPrice.offsetWidth;
-        bigPrice.classList.add(price > wasPrice ? 'flash-up' : 'flash-dn');
-      }
-    }
-    lastBtcPrice = price;
-
-    const changeEl = document.getElementById('price-change');
-    if (changeEl) {
-      changeEl.textContent = fmt.pct(change24);
-      setColor(changeEl, change24);
-    }
-
-    const absEl = document.getElementById('price-change-abs');
-    if (absEl) {
-      const abs = btc.price_change_24h;
-      absEl.textContent = '(' + fmt.price(abs) + ')';
-      setColor(absEl, change24);
-    }
-
-    setText('price-high', fmt.price(btc.high_24h));
-    setText('price-low', fmt.price(btc.low_24h));
-    setText('price-ath', fmt.price(btc.ath));
-    setText('mkt-cap', fmt.compact(btc.market_cap));
-    setText('volume', fmt.compact(btc.total_volume));
-    setText('circulating', (btc.circulating_supply / 1e6).toFixed(3) + 'M');
-    setText('mkt-rank', '#' + btc.market_cap_rank);
-
-    const change7El = document.getElementById('change7d');
-    if (change7El) { change7El.textContent = fmt.pct(change7); setColor(change7El, change7); }
-
-    const change30El = document.getElementById('change30d');
-    if (change30El) { change30El.textContent = fmt.pct(change30); setColor(change30El, change30); }
-
-    setText('ath-metric', fmt.price(btc.ath));
-    setText('ath-date', new Date(btc.ath_date).toLocaleDateString());
-
-    // Supply
-    const mined = btc.circulating_supply;
-    const pct = (mined / 21000000 * 100).toFixed(2);
-    const supplyBar = document.getElementById('supply-bar');
-    if (supplyBar) supplyBar.style.width = pct + '%';
-    setText('supply-mined', (mined/1e6).toFixed(3) + 'M');
-    setText('supply-left', ((21000000 - mined)/1e6).toFixed(3) + 'M');
-
-    // Supply donut
-    makeChart('supplyDonut', {
-      type: 'doughnut',
-      data: {
-        labels: ['Mined', 'Unmined'],
-        datasets: [{
-          data: [mined, 21000000 - mined],
-          backgroundColor: ['rgba(247,147,26,0.8)', 'rgba(247,147,26,0.08)'],
-          borderColor: ['rgba(247,147,26,1)', 'rgba(247,147,26,0.2)'],
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        cutout: '70%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: { label: c => c.label + ': ' + (c.raw/1e6).toFixed(2) + 'M BTC' }
-          }
-        }
-      }
-    });
-
-    // Ticker
-    ['t-price','t-price2'].forEach(id => setText(id, fmt.price(price)));
-    const chStr = fmt.pct(change24);
-    ['t-change','t-change2'].forEach(id => setText(id, chStr));
-    const mcStr = fmt.compact(btc.market_cap);
-    ['t-mcap','t-mcap2'].forEach(id => setText(id, mcStr));
-    const volStr = fmt.compact(btc.total_volume);
-    ['t-vol','t-vol2'].forEach(id => setText(id, volStr));
-
-    // Global table
-    buildGlobalTable(data);
-
-    // Dominance chart
-    buildDominanceChart(data);
-
-    // Exchange volume mock (top exchanges with CoinGecko aggregate data)
-    buildExchangeVolume(data);
-
-    document.getElementById('last-updated').textContent = 'UPDATED ' + new Date().toLocaleTimeString();
-  } catch (e) {
-    console.error('CoinGecko market error:', e);
-  }
-}
-
-// ═══════════════════════════════════════
-// COINGECKO GLOBAL
-// ═══════════════════════════════════════
-async function fetchGlobal() {
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/global');
-    const { data } = await res.json();
-    if (!data) return;
-    const dom = data.market_cap_percentage.btc?.toFixed(1) + '%';
-    setText('dominance', dom);
-    ['t-dom','t-dom2'].forEach(id => setText(id, dom));
-  } catch(e) {}
-}
-
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // TAB SWITCHING
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function switchTab(tab, btn) {
-  document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.h-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-' + tab).classList.add('active');
   btn.classList.add('active');
   if (tab === 'blocks') fetchBlocksFull();
 }
 
-// ═══════════════════════════════════════
-// PRICE CHART — with caching & error handling
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// PRICE CHART — cached, error-handled, locked to 3M
+// ═══════════════════════════════════════════════════
 const priceChartCache = {};
 let activeDays = 90;
 let priceChartLoading = false;
 
-async function loadPriceChart(days, clickedBtn) {
+async function loadPriceChart(days) {
   if (priceChartLoading) return;
   activeDays = days;
-
-  // No timeframe buttons — locked to 3M
-  activeDays = days;
-
-  // Show loading state
   const canvas = document.getElementById('priceChart');
-  const loadingEl = document.getElementById('priceChart-loading');
   if (canvas) canvas.style.opacity = '0.3';
-
-  // Check cache (5-minute TTL)
   const cacheKey = String(days);
   const now = Date.now();
   if (priceChartCache[cacheKey] && (now - priceChartCache[cacheKey].ts) < 300000) {
@@ -1012,57 +950,31 @@ async function loadPriceChart(days, clickedBtn) {
     if (canvas) canvas.style.opacity = '1';
     return;
   }
-
   priceChartLoading = true;
   try {
     const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}${days !== 'max' && days <= 90 ? '&interval=daily' : ''}`;
     const res = await fetch(url);
-
-    if (res.status === 429) {
-      // Rate limited — show friendly error
-      showChartError('priceChart', 'RATE LIMITED — PLEASE WAIT 60s AND TRY AGAIN');
-      if (canvas) canvas.style.opacity = '1';
-      priceChartLoading = false;
-      return;
-    }
-
-    if (!res.ok) {
-      showChartError('priceChart', 'API ERROR ' + res.status);
-      if (canvas) canvas.style.opacity = '1';
-      priceChartLoading = false;
-      return;
-    }
-
+    if (res.status === 429) { showChartError('priceChart', 'Rate limited — wait 60s'); if (canvas) canvas.style.opacity='1'; priceChartLoading=false; return; }
+    if (!res.ok)             { showChartError('priceChart', 'API error ' + res.status);  if (canvas) canvas.style.opacity='1'; priceChartLoading=false; return; }
     const data = await res.json();
-    if (!data.prices || !data.prices.length) {
-      showChartError('priceChart', 'NO DATA RETURNED');
-      if (canvas) canvas.style.opacity = '1';
-      priceChartLoading = false;
-      return;
-    }
-
+    if (!data.prices?.length) { showChartError('priceChart', 'No data'); if (canvas) canvas.style.opacity='1'; priceChartLoading=false; return; }
     priceChartCache[cacheKey] = { data, ts: now };
     renderPriceChart(data, days);
     if (canvas) canvas.style.opacity = '1';
-
-  } catch(e) {
-    showChartError('priceChart', 'CONNECTION ERROR');
-    if (canvas) canvas.style.opacity = '1';
-    console.error('Price chart error:', e);
-  }
+  } catch(e) { showChartError('priceChart', 'Connection error'); if (canvas) canvas.style.opacity='1'; }
   priceChartLoading = false;
 }
 
-function showChartError(canvasId, msg) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'rgba(255,51,102,0.7)';
-  ctx.font = "12px 'JetBrains Mono', monospace";
+function showChartError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  ctx.clearRect(0, 0, el.width, el.height);
+  ctx.fillStyle = 'rgba(251,113,133,0.7)';
+  ctx.font = "12px 'Inter', sans-serif";
   ctx.textAlign = 'center';
-  ctx.fillText('⚠ ' + msg, canvas.width / 2, canvas.height / 2);
+  ctx.fillText('⚠ ' + msg, el.width / 2, el.height / 2);
 }
 
 function renderPriceChart(data, days) {
@@ -1073,154 +985,101 @@ function renderPriceChart(data, days) {
          : d.toLocaleDateString([], {month:'short',year:'2-digit'});
   });
   const prices = data.prices.map(p => p[1]);
-  const volumes = data.total_volumes ? data.total_volumes.map(v => v[1]) : [];
-  const mcaps = data.market_caps ? data.market_caps.map(m => m[1]) : [];
+  const volumes = data.total_volumes?.map(v => v[1]) || [];
+  const mcaps = data.market_caps?.map(m => m[1]) || [];
+  const step = Math.max(1, Math.floor(labels.length / 300));
+  const sl = arr => arr.filter((_,i) => i % step === 0);
 
   const pCtx = document.getElementById('priceChart')?.getContext('2d');
   if (!pCtx) return;
-  const grad = pCtx.createLinearGradient(0, 0, 0, 400);
-  grad.addColorStop(0, 'rgba(247,147,26,0.3)');
-  grad.addColorStop(1, 'rgba(247,147,26,0.0)');
-
-  // Subsample for large datasets
-  const maxPts = 300;
-  const step = Math.max(1, Math.floor(labels.length / maxPts));
-  const sl = (arr) => arr.filter((_,i) => i % step === 0);
+  const grad = pCtx.createLinearGradient(0, 0, 0, 380);
+  grad.addColorStop(0, 'rgba(34,211,238,0.18)');
+  grad.addColorStop(1, 'rgba(34,211,238,0.0)');
 
   makeChart('priceChart', {
     type: 'line',
     data: {
       labels: sl(labels),
-      datasets: [{
-        label: 'BTC Price',
-        data: sl(prices),
-        borderColor: BTC_ORANGE,
-        borderWidth: 1.5,
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-      }]
+      datasets: [{ label:'BTC', data:sl(prices), borderColor:CYAN, borderWidth:2, backgroundColor:grad, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:5 }]
     },
     options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(10,10,16,0.95)',
-          borderColor: 'rgba(247,147,26,0.3)',
-          borderWidth: 1,
-          titleColor: '#6b5c42',
-          bodyColor: '#f7931a',
-          callbacks: { label: c => fmt.price(c.parsed.y) }
-        }
-      },
+      responsive:true,
+      interaction: { mode:'index', intersect:false },
+      plugins: { legend:{display:false}, tooltip: { ...tooltipDefaults, callbacks: { label: c => '  ' + fmt.price(c.parsed.y) } } },
       scales: {
-        x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
-        y: {
-          ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) },
-          grid: { color: 'rgba(247,147,26,0.06)' }
-        }
+        x: { ticks:{ maxTicksLimit:8 }, grid:{display:false} },
+        y: { ticks:{ callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) }, grid:{ color:'rgba(255,255,255,0.04)' } }
       }
     }
   });
 
   if (volumes.length) {
     makeChart('volumeChart', {
-      type: 'bar',
-      data: {
-        labels: sl(labels),
-        datasets: [{
-          label: 'Volume',
-          data: sl(volumes),
-          backgroundColor: 'rgba(247,147,26,0.3)',
-          borderColor: 'rgba(247,147,26,0.6)',
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-        scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { ticks: { callback: v => fmt.compact(v).replace('$','') } } }
-      }
+      type:'bar',
+      data: { labels:sl(labels), datasets:[{ label:'Volume', data:sl(volumes), backgroundColor:'rgba(167,139,250,0.35)', borderColor:VIOLET, borderWidth:1, borderRadius:2 }] },
+      options: { responsive:true, plugins:{ legend:{display:false}, tooltip:{...tooltipDefaults, callbacks:{label:c=>fmt.compact(c.parsed.y)}} }, scales:{ x:{ticks:{maxTicksLimit:6},grid:{display:false}}, y:{ticks:{callback:v=>fmt.compact(v).replace('$','')},grid:{color:'rgba(255,255,255,0.04)'}} } }
     });
   }
 
   if (mcaps.length) {
     const mcCtx = document.getElementById('mcapChart')?.getContext('2d');
     if (mcCtx) {
-      const mcGrad = mcCtx.createLinearGradient(0, 0, 0, 300);
-      mcGrad.addColorStop(0, 'rgba(0,255,136,0.2)');
-      mcGrad.addColorStop(1, 'rgba(0,255,136,0.0)');
+      const g = mcCtx.createLinearGradient(0,0,0,280);
+      g.addColorStop(0,'rgba(74,222,128,0.15)'); g.addColorStop(1,'rgba(74,222,128,0)');
       makeChart('mcapChart', {
-        type: 'line',
-        data: {
-          labels: sl(labels),
-          datasets: [{
-            label: 'Market Cap',
-            data: sl(mcaps),
-            borderColor: GREEN,
-            borderWidth: 1.5,
-            backgroundColor: mcGrad,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 0,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.compact(c.parsed.y) } } },
-          scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1e9).toFixed(0) + 'B' } } }
-        }
+        type:'line',
+        data:{ labels:sl(labels), datasets:[{ label:'MCap', data:sl(mcaps), borderColor:GREEN, borderWidth:1.5, backgroundColor:g, fill:true, tension:0.4, pointRadius:0 }] },
+        options:{ responsive:true, plugins:{legend:{display:false},tooltip:{...tooltipDefaults,callbacks:{label:c=>fmt.compact(c.parsed.y)}}}, scales:{ x:{ticks:{maxTicksLimit:6},grid:{display:false}}, y:{ticks:{callback:v=>'$'+(v/1e9).toFixed(0)+'B'},grid:{color:'rgba(255,255,255,0.04)'}} } }
       });
     }
   }
-
   buildAdvancedCharts(prices, labels);
 }
 
+// ═══════════════════════════════════════════════════
+// ADVANCED CHARTS
+// ═══════════════════════════════════════════════════
 function buildAdvancedCharts(prices, labels) {
-  // OHLC simulation (using actual daily price segments)
-  const step = Math.max(1, Math.floor(prices.length / 14));
-  const ohlcLabels = [], opens = [], highs = [], lows = [], closes = [];
-  for (let i = 0; i < prices.length - step; i += step) {
-    const seg = prices.slice(i, i + step);
-    opens.push(seg[0]);
-    closes.push(seg[seg.length - 1]);
-    highs.push(Math.max(...seg));
-    lows.push(Math.min(...seg));
-    ohlcLabels.push(labels[i]);
+  // OHLC — group into ~20 bars
+  const dailyMap = {};
+  const cached = priceChartCache['90'];
+  const rawPrices = cached?.data?.prices;
+  if (rawPrices?.length) {
+    rawPrices.forEach(([ts, price]) => {
+      const key = new Date(ts).toLocaleDateString('en-US', {month:'short',day:'numeric'});
+      if (!dailyMap[key]) dailyMap[key] = [];
+      dailyMap[key].push(price);
+    });
+  } else {
+    const sz = Math.max(1, Math.floor(prices.length/90));
+    for (let i=0;i<prices.length;i+=sz) { const k=labels[i]||String(i); dailyMap[k]=prices.slice(i,i+sz); }
   }
-  if (ohlcLabels.length > 0) {
-    const colors = closes.map((c, i) => c >= opens[i] ? 'rgba(0,255,136,0.7)' : 'rgba(255,51,102,0.7)');
-    const borderColors = closes.map((c, i) => c >= opens[i] ? GREEN : RED);
+  const ohlcL=[],opens=[],highs=[],lows=[],closes=[];
+  const allDays = Object.entries(dailyMap);
+  const gs = Math.max(1, Math.ceil(allDays.length/20));
+  for (let g=0;g<allDays.length;g+=gs) {
+    const chunk = allDays.slice(g,g+gs);
+    const pts = chunk.flatMap(([,p])=>p);
+    if (!pts.length) continue;
+    ohlcL.push(chunk[0][0]); opens.push(pts[0]); closes.push(pts[pts.length-1]);
+    highs.push(Math.max(...pts)); lows.push(Math.min(...pts));
+  }
+  if (ohlcL.length) {
+    const upColor   = closes.map((c,i) => c>=opens[i] ? 'rgba(74,222,128,0.75)' : 'rgba(251,113,133,0.75)');
+    const upBorder  = closes.map((c,i) => c>=opens[i] ? GREEN : RED);
+    const minLow = Math.min(...lows), maxHigh = Math.max(...highs);
+    const pad = (maxHigh-minLow)*0.04;
     makeChart('ohlcChart', {
-      type: 'bar',
-      data: {
-        labels: ohlcLabels,
-        datasets: [
-          { label: 'Low', data: lows, backgroundColor: 'transparent', borderColor: 'transparent', stack: 'ohlc' },
-          {
-            label: 'Range', data: closes.map((c,i) => Math.abs(c - opens[i])),
-            backgroundColor: colors, borderColor: borderColors, borderWidth: 1, stack: 'ohlc',
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: {
-          callbacks: {
-            label: (c) => {
-              const i = c.dataIndex;
-              return [`O: ${fmt.price(opens[i])}`, `H: ${fmt.price(highs[i])}`, `L: ${fmt.price(lows[i])}`, `C: ${fmt.price(closes[i])}`];
-            }
-          }
-        }},
-        scales: {
-          x: { stacked: true, ticks: { maxTicksLimit: 7 }, grid: { display: false } },
-          y: { stacked: true, ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+      type:'bar',
+      data:{ labels:ohlcL, datasets:[
+        { label:'Low', data:lows, backgroundColor:'transparent', borderColor:'transparent', stack:'o' },
+        { label:'Body', data:closes.map((c,i)=>Math.abs(c-opens[i])), backgroundColor:upColor, borderColor:upBorder, borderWidth:1, stack:'o' }
+      ]},
+      options:{ responsive:true,
+        plugins:{ legend:{display:false}, tooltip:{ ...tooltipDefaults, callbacks:{ title:items=>ohlcL[items[0].dataIndex], label:(c)=>{ const i=c.dataIndex; const chg=((closes[i]-opens[i])/opens[i]*100).toFixed(2); return [`O: ${fmt.price(opens[i])}`,`H: ${fmt.price(highs[i])}`,`L: ${fmt.price(lows[i])}`,`C: ${fmt.price(closes[i])}`,`Chg: ${closes[i]>=opens[i]?'+':''}${chg}%`]; } } } },
+        scales:{
+          x:{ stacked:true, ticks:{maxTicksLimit:8,font:{size:9}}, grid:{display:false} },
+          y:{ stacked:true, min:Math.floor(minLow-pad), max:Math.ceil(maxHigh+pad), ticks:{callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v),maxTicksLimit:5}, grid:{color:'rgba(255,255,255,0.04)'} }
         }
       }
     });
@@ -1228,268 +1087,249 @@ function buildAdvancedCharts(prices, labels) {
 
   // Moving Averages
   if (prices.length >= 20) {
-    const maLabels = labels.slice(19);
-    const ma7 = [], ma20 = [];
-    for (let i = 19; i < prices.length; i++) {
-      ma7.push(prices.slice(Math.max(0,i-6), i+1).reduce((a,b)=>a+b)/Math.min(7,i+1));
-      ma20.push(prices.slice(i-19, i+1).reduce((a,b)=>a+b)/20);
+    const maL = labels.slice(19); const ma7=[], ma20=[];
+    for (let i=19;i<prices.length;i++) {
+      ma7.push(prices.slice(Math.max(0,i-6),i+1).reduce((a,b)=>a+b)/Math.min(7,i+1));
+      ma20.push(prices.slice(i-19,i+1).reduce((a,b)=>a+b)/20);
     }
     const maCtx = document.getElementById('maChart')?.getContext('2d');
     if (maCtx) {
-      const maGrad = maCtx.createLinearGradient(0,0,0,300);
-      maGrad.addColorStop(0,'rgba(247,147,26,0.15)');
-      maGrad.addColorStop(1,'rgba(247,147,26,0)');
-      makeChart('maChart', {
-        type: 'line',
-        data: {
-          labels: maLabels.filter((_,i) => i % Math.max(1,Math.floor(maLabels.length/20))===0),
-          datasets: [
-            {
-              label: 'Price', data: prices.slice(19).filter((_,i) => i % Math.max(1,Math.floor(maLabels.length/20))===0),
-              borderColor: 'rgba(247,147,26,0.4)', borderWidth: 1, pointRadius: 0, tension: 0.3,
-              backgroundColor: maGrad, fill: true
-            },
-            {
-              label: 'MA7', data: ma7.filter((_,i) => i % Math.max(1,Math.floor(maLabels.length/20))===0),
-              borderColor: GREEN, borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false
-            },
-            {
-              label: 'MA20', data: ma20.filter((_,i) => i % Math.max(1,Math.floor(maLabels.length/20))===0),
-              borderColor: RED, borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: true, labels: { boxWidth: 10, color: '#6b5c42' } } },
-          scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } }, y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } } }
-        }
+      const mg = maCtx.createLinearGradient(0,0,0,280);
+      mg.addColorStop(0,'rgba(34,211,238,0.1)'); mg.addColorStop(1,'rgba(34,211,238,0)');
+      const f = Math.max(1,Math.floor(maL.length/20));
+      makeChart('maChart',{
+        type:'line',
+        data:{ labels:maL.filter((_,i)=>i%f===0), datasets:[
+          { label:'Price', data:prices.slice(19).filter((_,i)=>i%f===0), borderColor:'rgba(34,211,238,0.3)', borderWidth:1, pointRadius:0, tension:0.4, backgroundColor:mg, fill:true },
+          { label:'MA7',   data:ma7.filter((_,i)=>i%f===0),  borderColor:CYAN,   borderWidth:1.5, pointRadius:0, tension:0.4, fill:false },
+          { label:'MA20',  data:ma20.filter((_,i)=>i%f===0), borderColor:VIOLET, borderWidth:1.5, pointRadius:0, tension:0.4, fill:false },
+        ]},
+        options:{ responsive:true, plugins:{ legend:{display:true,labels:{boxWidth:8,padding:10,color:'#475569',font:{size:9}}}, tooltip:{...tooltipDefaults} }, scales:{ x:{ticks:{maxTicksLimit:6},grid:{display:false}}, y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,0.04)'}} } }
       });
     }
   }
 
-  // RSI (14-period)
+  // RSI
   if (prices.length >= 15) {
-    const rsiVals = [], rsiLabels = [];
-    for (let i = 14; i < prices.length; i++) {
-      const changes = prices.slice(i-14, i+1).map((v,j,a) => j > 0 ? v - a[j-1] : 0).slice(1);
-      const gains = changes.filter(c => c > 0);
-      const losses = changes.filter(c => c < 0).map(Math.abs);
-      const avgGain = gains.reduce((a,b)=>a+b,0) / 14;
-      const avgLoss = losses.reduce((a,b)=>a+b,0) / 14;
-      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      rsiVals.push(100 - (100 / (1 + rs)));
-      rsiLabels.push(labels[i]);
+    const rsiV=[], rsiL=[];
+    for (let i=14;i<prices.length;i++) {
+      const ch=prices.slice(i-14,i+1).map((v,j,a)=>j>0?v-a[j-1]:0).slice(1);
+      const ag=ch.filter(c=>c>0).reduce((a,b)=>a+b,0)/14;
+      const al=ch.filter(c=>c<0).map(Math.abs).reduce((a,b)=>a+b,0)/14;
+      rsiV.push(100-(100/(1+(al===0?100:ag/al)))); rsiL.push(labels[i]);
     }
-    const filtered = rsiVals.filter((_,i)=>i%Math.max(1,Math.floor(rsiVals.length/30))===0);
-    const filtLabels = rsiLabels.filter((_,i)=>i%Math.max(1,Math.floor(rsiLabels.length/30))===0);
-    makeChart('rsiChart', {
-      type: 'line',
-      data: {
-        labels: filtLabels,
-        datasets: [
-          {
-            label: 'RSI', data: filtered,
-            borderColor: BTC_ORANGE, borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false
-          },
-          { label: 'Overbought', data: Array(filtered.length).fill(70), borderColor: RED, borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false },
-          { label: 'Oversold', data: Array(filtered.length).fill(30), borderColor: GREEN, borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false },
-          { label: 'Mid', data: Array(filtered.length).fill(50), borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, pointRadius: 0, fill: false },
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } },
-          y: { min: 0, max: 100, ticks: { callback: v => v } }
-        }
-      }
+    const f=Math.max(1,Math.floor(rsiV.length/30));
+    makeChart('rsiChart',{
+      type:'line',
+      data:{ labels:rsiL.filter((_,i)=>i%f===0), datasets:[
+        { label:'RSI', data:rsiV.filter((_,i)=>i%f===0), borderColor:GOLD, borderWidth:1.5, pointRadius:0, tension:0.3, fill:false },
+        { label:'OB',  data:Array(Math.ceil(rsiV.length/f)).fill(70), borderColor:'rgba(251,113,133,0.4)', borderWidth:1, borderDash:[4,4], pointRadius:0, fill:false },
+        { label:'OS',  data:Array(Math.ceil(rsiV.length/f)).fill(30), borderColor:'rgba(74,222,128,0.4)',  borderWidth:1, borderDash:[4,4], pointRadius:0, fill:false },
+      ]},
+      options:{ responsive:true, plugins:{legend:{display:false},tooltip:{...tooltipDefaults}}, scales:{ x:{ticks:{maxTicksLimit:6},grid:{display:false}}, y:{min:0,max:100,ticks:{callback:v=>v},grid:{color:'rgba(255,255,255,0.04)'}} } }
     });
   }
 
-  // Bollinger Bands (20-period)
+  // Bollinger Bands
   if (prices.length >= 20) {
-    const bbLabels = [], upper = [], lower = [], mid = [], priceSlice = [];
-    for (let i = 19; i < prices.length; i++) {
-      const seg = prices.slice(i-19, i+1);
-      const avg = seg.reduce((a,b)=>a+b)/20;
-      const std = Math.sqrt(seg.reduce((s,v)=>s+(v-avg)**2,0)/20);
-      mid.push(avg); upper.push(avg + 2*std); lower.push(avg - 2*std);
-      priceSlice.push(prices[i]); bbLabels.push(labels[i]);
+    const bbL=[],upper=[],lower=[],mid=[],ps=[];
+    for (let i=19;i<prices.length;i++) {
+      const seg=prices.slice(i-19,i+1);
+      const avg=seg.reduce((a,b)=>a+b)/20;
+      const std=Math.sqrt(seg.reduce((s,v)=>s+(v-avg)**2,0)/20);
+      mid.push(avg); upper.push(avg+2*std); lower.push(avg-2*std); ps.push(prices[i]); bbL.push(labels[i]);
     }
-    const step2 = Math.max(1, Math.floor(bbLabels.length/25));
-    const sliced = (arr) => arr.filter((_,i)=>i%step2===0);
-    const bbCtx = document.getElementById('bollingerChart')?.getContext('2d');
+    const f=Math.max(1,Math.floor(bbL.length/25));
+    const sl=a=>a.filter((_,i)=>i%f===0);
+    const bbCtx=document.getElementById('bollingerChart')?.getContext('2d');
     if (bbCtx) {
-      const uGrad = bbCtx.createLinearGradient(0,0,0,200);
-      uGrad.addColorStop(0,'rgba(247,147,26,0.08)');
-      uGrad.addColorStop(1,'rgba(247,147,26,0.0)');
-      makeChart('bollingerChart', {
-        type: 'line',
-        data: {
-          labels: sliced(bbLabels),
-          datasets: [
-            { label: 'Upper', data: sliced(upper), borderColor: 'rgba(247,147,26,0.4)', borderWidth: 1, pointRadius: 0, fill: false, tension: 0.3 },
-            { label: 'Mid', data: sliced(mid), borderColor: 'rgba(247,147,26,0.8)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 },
-            { label: 'Lower', data: sliced(lower), borderColor: 'rgba(247,147,26,0.4)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: uGrad, tension: 0.3 },
-            { label: 'Price', data: sliced(priceSlice), borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1, pointRadius: 0, fill: false, tension: 0.3 },
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } },
-            y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
-          }
-        }
+      const bg=bbCtx.createLinearGradient(0,0,0,200);
+      bg.addColorStop(0,'rgba(34,211,238,0.06)'); bg.addColorStop(1,'rgba(34,211,238,0)');
+      makeChart('bollingerChart',{
+        type:'line',
+        data:{ labels:sl(bbL), datasets:[
+          { label:'Upper', data:sl(upper), borderColor:'rgba(34,211,238,0.3)', borderWidth:1, pointRadius:0, fill:false, tension:0.3 },
+          { label:'Mid',   data:sl(mid),   borderColor:CYAN, borderWidth:1.5, pointRadius:0, fill:false, tension:0.3 },
+          { label:'Lower', data:sl(lower), borderColor:'rgba(34,211,238,0.3)', borderWidth:1, pointRadius:0, fill:'+1', backgroundColor:bg, tension:0.3 },
+          { label:'Price', data:sl(ps),    borderColor:'rgba(255,255,255,0.25)', borderWidth:1, pointRadius:0, fill:false, tension:0.3 },
+        ]},
+        options:{ responsive:true, plugins:{legend:{display:false},tooltip:{...tooltipDefaults}}, scales:{ x:{ticks:{maxTicksLimit:6},grid:{display:false}}, y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'rgba(255,255,255,0.04)'}} } }
       });
     }
   }
 
-  // Daily Returns Distribution
+  // Returns Distribution
   if (prices.length >= 7) {
-    const dailyReturns = prices.slice(1).map((v,i) => ((v - prices[i]) / prices[i]) * 100);
-    const bins = Array.from({length:20}, (_,i) => -10 + i * 1);
-    const hist = Array(20).fill(0);
-    dailyReturns.forEach(r => {
-      const idx = Math.min(19, Math.max(0, Math.floor((r + 10))));
-      hist[idx]++;
-    });
-    makeChart('returnsChart', {
-      type: 'bar',
-      data: {
-        labels: bins.map(b => b.toFixed(0) + '%'),
-        datasets: [{
-          label: 'Frequency',
-          data: hist,
-          backgroundColor: bins.map(b => b < 0 ? 'rgba(255,51,102,0.5)' : 'rgba(0,255,136,0.5)'),
-          borderColor: bins.map(b => b < 0 ? RED : GREEN),
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y + ' periods' } } },
-        scales: { x: { ticks: { maxTicksLimit: 8 } }, y: { ticks: { stepSize: 1 } } }
-      }
+    const returns=prices.slice(1).map((v,i)=>((v-prices[i])/prices[i])*100);
+    const bins=Array.from({length:20},(_,i)=>-10+i);
+    const hist=Array(20).fill(0);
+    returns.forEach(r=>{ const idx=Math.min(19,Math.max(0,Math.floor(r+10))); hist[idx]++; });
+    makeChart('returnsChart',{
+      type:'bar',
+      data:{ labels:bins.map(b=>b.toFixed(0)+'%'), datasets:[{ label:'Freq', data:hist, backgroundColor:bins.map(b=>b<0?'rgba(251,113,133,0.5)':'rgba(74,222,128,0.5)'), borderColor:bins.map(b=>b<0?RED:GREEN), borderWidth:1, borderRadius:2 }] },
+      options:{ responsive:true, plugins:{legend:{display:false},tooltip:{...tooltipDefaults,callbacks:{label:c=>c.parsed.y+' periods'}}}, scales:{ x:{ticks:{maxTicksLimit:8},grid:{display:false}}, y:{ticks:{stepSize:1},grid:{color:'rgba(255,255,255,0.04)'}} } }
     });
   }
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // GLOBAL TABLE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function buildGlobalTable(coins) {
   const tbody = document.getElementById('global-tbody');
   if (!tbody) return;
-
-  // Calculate total market cap for dominance
-  const totalMcap = coins.reduce((s,c) => s + (c.market_cap || 0), 0);
-
-  tbody.innerHTML = coins.map((c, i) => {
-    const ch24 = c.price_change_percentage_24h;
-    const ch7 = c.price_change_percentage_7d_in_currency;
-    const dom = totalMcap > 0 ? ((c.market_cap / totalMcap) * 100).toFixed(1) + '%' : '—';
-    const chStyle = (v) => v == null ? '' : `style="color:${v >= 0 ? 'var(--green)' : 'var(--red)'}"`;
+  const totalMcap = coins.reduce((s,c)=>s+(c.market_cap||0),0);
+  tbody.innerHTML = coins.map((c,i) => {
+    const ch24=c.price_change_percentage_24h, ch7=c.price_change_percentage_7d_in_currency;
+    const dom = totalMcap>0 ? ((c.market_cap/totalMcap)*100).toFixed(1)+'%' : '—';
+    const cs = v => v==null?'':v>=0?'color:var(--green)':'color:var(--red)';
     return `<tr>
-      <td style="color:var(--dim)">${i+1}</td>
-      <td style="color:var(--btc);font-family:'Orbitron';font-size:10px;">${c.symbol?.toUpperCase()}</td>
+      <td>${i+1}</td>
+      <td class="asset-symbol">${c.symbol?.toUpperCase()}</td>
       <td>${fmt.price(c.current_price)}</td>
-      <td ${chStyle(ch24)}>${fmt.pct(ch24)}</td>
-      <td ${chStyle(ch7)}>${fmt.pct(ch7)}</td>
+      <td style="${cs(ch24)}">${fmt.pct(ch24)}</td>
+      <td style="${cs(ch7)}">${fmt.pct(ch7)}</td>
       <td>${fmt.compact(c.market_cap)}</td>
       <td>${fmt.compact(c.total_volume)}</td>
-      <td style="color:var(--dim)">${dom}</td>
+      <td style="color:var(--text3)">${dom}</td>
     </tr>`;
   }).join('');
 }
 
-// ═══════════════════════════════════════
-// DOMINANCE PIE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// DOMINANCE HORIZONTAL BAR
+// ═══════════════════════════════════════════════════
 function buildDominanceChart(coins) {
-  const top5 = coins.slice(0,5);
-  const totalMcap = coins.reduce((s,c) => s + (c.market_cap||0), 0);
-  const data = top5.map(c => (c.market_cap / totalMcap * 100).toFixed(1));
-  const labels = top5.map(c => c.symbol?.toUpperCase());
-  makeChart('dominanceChart', {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: ['rgba(247,147,26,0.85)','rgba(0,255,136,0.6)','rgba(100,180,255,0.6)','rgba(255,51,102,0.6)','rgba(180,100,255,0.6)'],
-        borderColor: 'rgba(0,0,0,0.5)',
-        borderWidth: 2,
-      }]
-    },
-    options: {
-      responsive: true,
-      cutout: '60%',
-      plugins: {
-        legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 8, color: '#6b5c42', font: { size: 9 } } },
-        tooltip: { callbacks: { label: c => c.label + ': ' + c.parsed.toFixed(1) + '%' } }
-      }
+  const top7 = coins.slice(0,7);
+  const totalMcap = coins.reduce((s,c)=>s+(c.market_cap||0),0);
+  const labels = top7.map(c=>c.symbol?.toUpperCase());
+  const data   = top7.map(c=>parseFloat((c.market_cap/totalMcap*100).toFixed(2)));
+  const colors = [CYAN,'rgba(167,139,250,0.8)','rgba(74,222,128,0.8)','rgba(251,191,36,0.8)','rgba(251,113,133,0.8)','rgba(56,189,248,0.8)','rgba(232,121,249,0.8)'];
+  makeChart('dominanceChart',{
+    type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderColor:colors, borderWidth:0, borderRadius:4 }] },
+    options:{
+      indexAxis:'y', responsive:true,
+      plugins:{legend:{display:false}, tooltip:{...tooltipDefaults, callbacks:{label:c=>c.parsed.x.toFixed(2)+'% market cap'}}},
+      scales:{ x:{ticks:{callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}}, y:{ticks:{font:{size:10},color:'#e2e8f0'},grid:{display:false}} }
     }
   });
 }
 
-// ═══════════════════════════════════════
-// EXCHANGE VOLUME (mock top exchanges)
-// ═══════════════════════════════════════
-function buildExchangeVolume(coins) {
-  const btc = coins[0];
-  if (!btc) return;
-  const totalVol = btc.total_volume;
-  const exchanges = [
-    { name: 'Binance', pct: 0.31 },
-    { name: 'Coinbase', pct: 0.18 },
-    { name: 'Kraken', pct: 0.12 },
-    { name: 'Bybit', pct: 0.10 },
-    { name: 'OKX', pct: 0.09 },
-    { name: 'Others', pct: 0.20 },
-  ];
-  const maxVol = totalVol * 0.31;
-  const html = exchanges.map(e => `
-    <div class="exchange-row">
-      <span class="ex-name">${e.name}</span>
-      <div class="ex-bar"><div class="ex-bar-fill" style="width:${(e.pct/0.31*100).toFixed(0)}%"></div></div>
-      <span class="ex-vol">${fmt.compact(totalVol * e.pct)}</span>
-    </div>
-  `).join('');
-  document.getElementById('exchange-vol-content').innerHTML = html;
+// ═══════════════════════════════════════════════════
+// COINGECKO MARKET DATA
+// ═══════════════════════════════════════════════════
+let lastBtcPrice = null;
+async function fetchCoinGeckoMarket() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,cardano,avalanche-2,polkadot&order=market_cap_desc&sparkline=false&price_change_percentage=7d,30d');
+    const data = await res.json();
+    if (!data?.[0]) return;
+    const btc = data[0];
+    const price = btc.current_price;
+    const change24 = btc.price_change_percentage_24h;
+    const change7  = btc.price_change_percentage_7d_in_currency;
+    const change30 = btc.price_change_percentage_30d_in_currency;
+
+    const bigEl = document.getElementById('big-price');
+    if (bigEl) {
+      if (lastBtcPrice) { bigEl.classList.remove('flash-up','flash-dn'); void bigEl.offsetWidth; bigEl.classList.add(price>lastBtcPrice?'flash-up':'flash-dn'); }
+      bigEl.textContent = fmt.price(price);
+    }
+    lastBtcPrice = price;
+
+    const chEl = document.getElementById('price-change');
+    if (chEl) { chEl.textContent = fmt.pct(change24); setColor(chEl, change24); }
+    const absEl = document.getElementById('price-change-abs');
+    if (absEl) { absEl.textContent = fmt.price(btc.price_change_24h); setColor(absEl, change24); }
+
+    setText('price-high', fmt.price(btc.high_24h));
+    setText('price-low',  fmt.price(btc.low_24h));
+    setText('price-ath',  fmt.price(btc.ath));
+    setText('mkt-cap',    fmt.compact(btc.market_cap));
+    setText('volume',     fmt.compact(btc.total_volume));
+    setText('circulating',(btc.circulating_supply/1e6).toFixed(3)+'M');
+    setText('mkt-rank',   '#'+btc.market_cap_rank);
+    setText('ath-metric', fmt.price(btc.ath));
+    setText('ath-date',   new Date(btc.ath_date).toLocaleDateString());
+
+    const ch7El=document.getElementById('change7d');  if(ch7El){ch7El.textContent=fmt.pct(change7); setColor(ch7El,change7);}
+    const ch30El=document.getElementById('change30d'); if(ch30El){ch30El.textContent=fmt.pct(change30);setColor(ch30El,change30);}
+
+    // Supply
+    const mined = btc.circulating_supply;
+    const pct = (mined/21000000*100).toFixed(2);
+    const sb = document.getElementById('supply-bar');
+    if (sb) sb.style.width = pct+'%';
+    setText('supply-pct-label', pct+'%');
+    setText('supply-mined', (mined/1e6).toFixed(3)+'M');
+    setText('supply-left',  ((21000000-mined)/1e6).toFixed(3)+'M');
+    setText('supply-mcap',  fmt.compact(btc.market_cap));
+    setText('supply-vol',   fmt.compact(btc.total_volume));
+
+    // Ticker
+    ['t-price','t-price2'].forEach(id=>setText(id,fmt.price(price)));
+    ['t-change','t-change2'].forEach(id=>setText(id,fmt.pct(change24)));
+    ['t-mcap','t-mcap2'].forEach(id=>setText(id,fmt.compact(btc.market_cap)));
+    ['t-vol','t-vol2'].forEach(id=>setText(id,fmt.compact(btc.total_volume)));
+
+    buildGlobalTable(data);
+    buildDominanceChart(data);
+    setText('last-updated', 'Updated '+new Date().toLocaleTimeString());
+  } catch(e) { console.error('Market error:', e); }
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// COINGECKO GLOBAL
+// ═══════════════════════════════════════════════════
+async function fetchGlobal() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/global');
+    const { data } = await res.json();
+    if (!data) return;
+    const dom = data.market_cap_percentage.btc?.toFixed(1)+'%';
+    setText('dominance', dom);
+    ['t-dom','t-dom2'].forEach(id=>setText(id,dom));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════
 // FEAR & GREED
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function fetchFearGreed() {
   try {
     const res = await fetch('https://api.alternative.me/fng/?limit=1');
     const { data } = await res.json();
-    if (!data || !data[0]) return;
+    if (!data?.[0]) return;
     const val = parseInt(data[0].value);
     const label = data[0].value_classification;
     setText('fg-value', val);
-    setText('fg-label', label.toUpperCase());
-    const fgVal = document.getElementById('fg-value');
-    const fgBar = document.getElementById('fg-bar');
-    if (fgVal) {
-      if (val <= 25) { fgVal.style.color = 'var(--red)'; fgBar.style.background = 'var(--red)'; }
-      else if (val <= 45) { fgVal.style.color = 'rgb(255,120,0)'; fgBar.style.background = 'rgb(255,120,0)'; }
-      else if (val <= 55) { fgVal.style.color = 'var(--text)'; fgBar.style.background = 'var(--text)'; }
-      else if (val <= 75) { fgVal.style.color = 'var(--btc)'; fgBar.style.background = 'var(--btc)'; }
-      else { fgVal.style.color = 'var(--green)'; fgBar.style.background = 'var(--green)'; }
+    setText('fg-label', label);
+
+    // Arc animation
+    const arc = document.getElementById('fg-arc');
+    const valEl = document.getElementById('fg-value');
+    if (arc) {
+      const circumference = 2 * Math.PI * 50; // r=50
+      const halfCirc = circumference / 2;
+      const offset = halfCirc - (val / 100) * halfCirc;
+      arc.style.strokeDashoffset = offset + halfCirc;
+      // Color gradient
+      let color;
+      if (val <= 25)      { color = 'var(--red)';   }
+      else if (val <= 45) { color = 'var(--gold)';  }
+      else if (val <= 55) { color = 'var(--text2)'; }
+      else if (val <= 75) { color = 'var(--cyan)';  }
+      else                { color = 'var(--green)'; }
+      arc.style.stroke = color;
+      if (valEl) valEl.style.color = color;
     }
-    if (fgBar) fgBar.style.width = val + '%';
   } catch(e) {}
 }
 
-// ═══════════════════════════════════════
-// MEMPOOL.SPACE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// MEMPOOL
+// ═══════════════════════════════════════════════════
 async function fetchMempool() {
   try {
     const [feeRes, mempoolRes, blockRes] = await Promise.all([
@@ -1497,286 +1337,143 @@ async function fetchMempool() {
       fetch('https://mempool.space/api/mempool'),
       fetch('https://mempool.space/api/v1/blocks/tip/height'),
     ]);
-
     const fees = await feeRes.json();
     const mempool = await mempoolRes.json();
     const blockHeight = await blockRes.json();
 
-    // Fees display
     document.getElementById('mempool-content').innerHTML = `
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">⚡ FASTEST</span>
-        <span class="fee-badge fee-fast">${fees.fastestFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~10 min</span>
+      <div class="fee-tier">
+        <span class="fee-label">Fastest</span>
+        <span class="fee-pill fp-fast">${fees.fastestFee} sat/vB</span>
+        <span class="fee-est">~10 min</span>
       </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">🟠 MEDIUM</span>
-        <span class="fee-badge fee-med">${fees.halfHourFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~30 min</span>
+      <div class="fee-tier">
+        <span class="fee-label">Medium</span>
+        <span class="fee-pill fp-mid">${fees.halfHourFee} sat/vB</span>
+        <span class="fee-est">~30 min</span>
       </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">🟢 ECONOMY</span>
-        <span class="fee-badge fee-slow">${fees.hourFee} sat/vB</span>
-        <span style="font-size:10px;color:var(--dim);">~60 min</span>
+      <div class="fee-tier">
+        <span class="fee-label">Economy</span>
+        <span class="fee-pill fp-slow">${fees.hourFee} sat/vB</span>
+        <span class="fee-est">~60 min</span>
       </div>
-      <div class="mempool-row">
-        <span style="font-size:11px;color:var(--dim);">MINIMUM</span>
-        <span style="font-size:12px;color:var(--dim);">${fees.minimumFee} sat/vB</span>
+      <div class="fee-tier">
+        <span class="fee-label">Minimum</span>
+        <span class="fee-pill fp-min">${fees.minimumFee} sat/vB</span>
+        <span class="fee-est">low priority</span>
       </div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(247,147,26,0.1);">
-        <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">MEMPOOL STATUS</div>
-        <div style="font-size:12px;margin-bottom:4px;">PENDING TXS: <span style="color:var(--btc)">${fmt.number(mempool.count)}</span></div>
-        <div style="font-size:12px;margin-bottom:4px;">SIZE: <span style="color:var(--btc)">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
-        <div style="font-size:12px;">TOTAL FEES: <span style="color:var(--btc)">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div class="kv-row" style="padding:5px 0;"><span class="kv-key">Pending TXs</span><span class="kv-val">${fmt.number(mempool.count)}</span></div>
+        <div class="kv-row" style="padding:5px 0;"><span class="kv-key">Size</span><span class="kv-val">${(mempool.vsize/1e6).toFixed(2)} MB</span></div>
+        <div class="kv-row" style="padding:5px 0;border-bottom:none;"><span class="kv-key">Total Fees</span><span class="kv-val">${(mempool.total_fee/1e8).toFixed(4)} BTC</span></div>
       </div>
     `;
 
-    // Block height for ticker + halving
-    const height = blockHeight;
-    ['t-block','t-block2'].forEach(id => setText(id, '#' + fmt.number(height)));
-    ['t-mempool','t-mempool2'].forEach(id => setText(id, fmt.number(mempool.count)));
+    ['t-block','t-block2'].forEach(id=>setText(id,'#'+fmt.number(blockHeight)));
+    ['t-mempool','t-mempool2'].forEach(id=>setText(id,fmt.number(mempool.count)));
 
-    // Halving
     const NEXT_HALVING = 1050000;
-    const blocksLeft = NEXT_HALVING - height;
-    const secsLeft = blocksLeft * 10 * 60;
-    const halvingDate = new Date(Date.now() + secsLeft * 1000);
-    setText('halving-block', '#' + fmt.number(NEXT_HALVING));
+    const blocksLeft = NEXT_HALVING - blockHeight;
+    const halvingDate = new Date(Date.now() + blocksLeft * 600000);
+    setText('halving-block', '#'+fmt.number(NEXT_HALVING));
     setText('halving-blocks-left', fmt.number(blocksLeft));
-    setText('halving-date', halvingDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}));
-    ['t-halving','t-halving2'].forEach(id => setText(id, halvingDate.toLocaleDateString()));
+    setText('halving-date', halvingDate.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}));
+    ['t-halving','t-halving2'].forEach(id=>setText(id,halvingDate.toLocaleDateString()));
 
-    // Countdown
-    function updateCountdown() {
-      const now = new Date();
-      const diff = halvingDate - now;
-      if (diff <= 0) { setText('hc-days','0'); setText('hc-hours','0'); setText('hc-mins','0'); setText('hc-secs','0'); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setText('hc-days', d); setText('hc-hours', h); setText('hc-mins', m); setText('hc-secs', s);
-    }
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
-
+    (function tick() {
+      const diff = halvingDate - Date.now();
+      if (diff <= 0) { ['hc-days','hc-hours','hc-mins','hc-secs'].forEach(id=>setText(id,'0')); return; }
+      setText('hc-days',  Math.floor(diff/86400000));
+      setText('hc-hours', Math.floor((diff%86400000)/3600000));
+      setText('hc-mins',  Math.floor((diff%3600000)/60000));
+      setText('hc-secs',  Math.floor((diff%60000)/1000));
+      setTimeout(tick, 1000);
+    })();
   } catch(e) { console.error('Mempool error:', e); }
 }
 
-// ═══════════════════════════════════════
-// RECENT BLOCKS (dashboard mini view)
-// ═══════════════════════════════════════
-async function fetchBlocks() {
-  try {
-    const res = await fetch('https://mempool.space/api/v1/blocks');
-    const blocks = await res.json();
-    if (!blocks || !blocks.length) return;
-    const row = document.getElementById('blocks-row');
-    if (!row) return;
-    row.innerHTML = blocks.slice(0,12).map(b => `
-      <div class="block-card" onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
-        <div class="b-height">${fmt.number(b.height)}</div>
-        <div class="b-txs">${fmt.number(b.tx_count)} txs</div>
-        <div class="b-size">${(b.size/1e6).toFixed(2)}MB</div>
-        <div class="b-txs">${(b.extras?.totalFees/1e8||0).toFixed(4)}₿</div>
-      </div>
-    `).join('');
-  } catch(e) { console.error('Blocks error:', e); }
+// ═══════════════════════════════════════════════════
+// BLOCKS FULL PAGE
+// ═══════════════════════════════════════════════════
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now()-ts*1000)/1000);
+  if (diff<60) return diff+'s ago';
+  if (diff<3600) return Math.floor(diff/60)+'m ago';
+  if (diff<86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
 }
 
-// ═══════════════════════════════════════
-// BLOCKS FULL PAGE
-// ═══════════════════════════════════════
-function timeAgo(ts) {
-  const diff = Math.floor((Date.now() - ts * 1000) / 1000);
-  if (diff < 60) return diff + 's ago';
-  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-  return Math.floor(diff/86400) + 'd ago';
-}
+async function fetchBlocks() { /* dashboard mini — not used */ }
 
 async function fetchBlocksFull() {
   try {
     const res = await fetch('https://mempool.space/api/v1/blocks');
     const blocks = await res.json();
-    if (!blocks || !blocks.length) return;
+    if (!blocks?.length) return;
 
-    // ── STATS
-    const avgSize = (blocks.reduce((s,b) => s + b.size, 0) / blocks.length / 1e6).toFixed(2);
-    const avgTxs  = Math.round(blocks.reduce((s,b) => s + b.tx_count, 0) / blocks.length);
-    const avgFees = (blocks.reduce((s,b) => s + (b.extras?.totalFees||0), 0) / blocks.length / 1e8).toFixed(4);
-    const avgMedFee = (blocks.reduce((s,b) => s + (b.extras?.medianFee||0), 0) / blocks.length).toFixed(1);
-
-    // Average time between blocks
+    const avgSize = (blocks.reduce((s,b)=>s+b.size,0)/blocks.length/1e6).toFixed(2);
+    const avgTxs  = Math.round(blocks.reduce((s,b)=>s+b.tx_count,0)/blocks.length);
+    const avgFees = (blocks.reduce((s,b)=>s+(b.extras?.totalFees||0),0)/blocks.length/1e8).toFixed(4);
+    const avgMedFee = (blocks.reduce((s,b)=>s+(b.extras?.medianFee||0),0)/blocks.length).toFixed(1);
     const times = [];
-    for (let i = 0; i < blocks.length - 1; i++) {
-      times.push(Math.abs(blocks[i].timestamp - blocks[i+1].timestamp));
-    }
-    const avgTime = times.length ? (times.reduce((a,b)=>a+b,0)/times.length/60).toFixed(1) : '—';
+    for (let i=0;i<blocks.length-1;i++) times.push(Math.abs(blocks[i].timestamp-blocks[i+1].timestamp));
+    const avgTime = times.length?(times.reduce((a,b)=>a+b,0)/times.length/60).toFixed(1):'—';
 
     setText('bp-height', fmt.number(blocks[0].height));
-    setText('bp-avg-size', avgSize + ' MB');
+    setText('bp-avg-size', avgSize+' MB');
     setText('bp-avg-txs', fmt.number(avgTxs));
-    setText('bp-avg-fees', avgFees + ' BTC');
-    setText('bp-avg-median-fee', avgMedFee + ' sat/vB');
+    setText('bp-avg-fees', avgFees+' BTC');
+    setText('bp-avg-median-fee', avgMedFee+' sat/vB');
     setText('bp-avg-time', avgTime);
-    setText('blocks-last-updated', 'UPDATED ' + new Date().toLocaleTimeString());
+    setText('blocks-last-updated', 'Updated '+new Date().toLocaleTimeString());
 
-    // ── CHARTS
-    const heights = blocks.map(b => '#' + fmt.number(b.height)).reverse();
-    const sizes   = blocks.map(b => (b.size/1e6).toFixed(3)).reverse();
-    const txCounts= blocks.map(b => b.tx_count).reverse();
-
-    makeChart('blockSizeChart', {
-      type: 'bar',
-      data: {
-        labels: heights,
-        datasets: [{
-          label: 'Size MB',
-          data: sizes,
-          backgroundColor: sizes.map(s => s > 1.5 ? 'rgba(247,147,26,0.7)' : 'rgba(247,147,26,0.35)'),
-          borderColor: 'rgba(247,147,26,0.8)',
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y + ' MB' } } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 8, font: { size: 8 } }, grid: { display: false } },
-          y: { ticks: { callback: v => v + 'MB' }, grid: { color: 'rgba(247,147,26,0.06)' } }
-        }
-      }
-    });
-
-    makeChart('blockTxChart', {
-      type: 'bar',
-      data: {
-        labels: heights,
-        datasets: [{
-          label: 'Transactions',
-          data: txCounts,
-          backgroundColor: 'rgba(0,255,136,0.3)',
-          borderColor: 'rgba(0,255,136,0.6)',
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt.number(c.parsed.y) + ' txs' } } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 8, font: { size: 8 } }, grid: { display: false } },
-          y: { ticks: { callback: v => fmt.number(v) }, grid: { color: 'rgba(0,255,136,0.04)' } }
-        }
-      }
-    });
-
-    // Pool distribution pie
-    const poolCounts = {};
-    blocks.forEach(b => {
-      const pool = b.extras?.pool?.name || 'Unknown';
-      poolCounts[pool] = (poolCounts[pool] || 0) + 1;
-    });
-    const sorted = Object.entries(poolCounts).sort((a,b) => b[1]-a[1]);
-    const poolColors = ['rgba(247,147,26,0.85)','rgba(0,255,136,0.7)','rgba(100,180,255,0.7)','rgba(255,51,102,0.7)','rgba(200,100,255,0.7)','rgba(255,200,50,0.7)'];
-    makeChart('poolChart', {
-      type: 'doughnut',
-      data: {
-        labels: sorted.map(p => p[0]),
-        datasets: [{
-          data: sorted.map(p => p[1]),
-          backgroundColor: sorted.map((_,i) => poolColors[i % poolColors.length]),
-          borderColor: 'rgba(0,0,0,0.4)',
-          borderWidth: 2,
-        }]
-      },
-      options: {
-        responsive: true,
-        cutout: '55%',
-        plugins: {
-          legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 8, color: '#6b5c42', font: { size: 9 } } },
-          tooltip: { callbacks: { label: c => c.label + ': ' + c.parsed + ' blocks' } }
-        }
-      }
-    });
-
-    // ── FULL TABLE
     const tbody = document.getElementById('blocks-full-tbody');
     if (!tbody) return;
-
     tbody.innerHTML = blocks.map(b => {
-      const fees = b.extras?.totalFees || 0;
-      const medFee = b.extras?.medianFee || 0;
-      const feeRange = b.extras?.feeRange || [];
-      const pool = b.extras?.pool?.name || 'Unknown';
-      const sizeMB = (b.size / 1e6).toFixed(3);
-      const weightMWU = (b.weight / 1e6).toFixed(3);
-      const fillPct = Math.min(100, (b.size / 1572864 * 100)).toFixed(0); // 1.5MB target
-
-      // Fee range mini bar
-      const feeBarHtml = feeRange.length >= 2
-        ? `<div class="fee-bar-mini">${feeRange.slice(0,-1).map((_,i) => {
-            const pct = 100 / (feeRange.length - 1);
-            const hue = i / (feeRange.length-2);
-            const color = `rgba(${Math.round(247*(1-hue)+255*hue)},${Math.round(147*(1-hue)+51*hue)},${Math.round(26*(1-hue)+102*hue)},0.8)`;
-            return `<div class="fee-segment" style="flex:1;background:${color};"></div>`;
-          }).join('')}</div><div style="font-size:9px;color:var(--dim);margin-top:2px;">${feeRange[0]}–${feeRange[feeRange.length-1]} sat/vB</div>`
-        : `<span style="color:var(--dim);font-size:10px;">—</span>`;
-
-      const ts = new Date(b.timestamp * 1000);
-      const tsStr = ts.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-
-      return `<tr onclick="window.open('https://mempool.space/block/${b.id}','_blank')" style="cursor:pointer;">
-        <td style="font-family:'Orbitron';font-size:11px;color:var(--btc);">${fmt.number(b.height)}</td>
-        <td style="font-size:10px;color:var(--text);">${tsStr}</td>
+      const fees=b.extras?.totalFees||0, medFee=b.extras?.medianFee||0;
+      const feeRange=b.extras?.feeRange||[], pool=b.extras?.pool?.name||'Unknown';
+      const sizeMB=(b.size/1e6).toFixed(3), weightMWU=(b.weight/1e6).toFixed(3);
+      const fillPct=Math.min(100,(b.size/1572864*100)).toFixed(0);
+      const feeBarHtml = feeRange.length>=2
+        ? `<div class="fee-bar-mini">${feeRange.slice(0,-1).map((_,i)=>{ const h=i/(feeRange.length-2); const c=`rgba(${Math.round(34+h*217)},${Math.round(211-h*98)},${Math.round(238-h*105)},0.8)`; return `<div class="fee-segment" style="flex:1;background:${c}"></div>`; }).join('')}</div><div style="font-size:9px;color:var(--text3);margin-top:2px;">${feeRange[0]}–${feeRange[feeRange.length-1]}</div>`
+        : `<span style="color:var(--text3);font-size:10px;">—</span>`;
+      const ts=new Date(b.timestamp*1000).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const medColor = medFee>50?'var(--red)':medFee>20?'var(--gold)':'var(--green)';
+      return `<tr onclick="window.open('https://mempool.space/block/${b.id}','_blank')">
+        <td style="color:var(--cyan);font-weight:600;">${fmt.number(b.height)}</td>
+        <td style="color:var(--text2);font-size:10px;">${ts}</td>
         <td class="block-age">${timeAgo(b.timestamp)}</td>
         <td><span class="pool-badge">${pool}</span></td>
-        <td style="color:var(--text);">${fmt.number(b.tx_count)}</td>
-        <td>
-          <div class="size-bar-wrap">
-            <div class="size-bar" style="width:${fillPct}px;max-width:60px;"></div>
-            <span style="font-size:10px;color:var(--text);">${sizeMB} MB</span>
-          </div>
-        </td>
-        <td style="color:var(--dim);font-size:10px;">${weightMWU} MWU</td>
-        <td style="color:var(--btc);">${(fees/1e8).toFixed(4)} ₿</td>
-        <td style="color:${medFee > 50 ? 'var(--red)' : medFee > 20 ? 'var(--btc)' : 'var(--green)'};">${medFee} sat/vB</td>
+        <td>${fmt.number(b.tx_count)}</td>
+        <td><div class="size-bar-wrap"><div class="size-bar" style="width:${fillPct}px;max-width:55px;"></div><span style="font-size:10px;">${sizeMB} MB</span></div></td>
+        <td style="color:var(--text3);font-size:10px;">${weightMWU} MWU</td>
+        <td style="color:var(--cyan);">${(fees/1e8).toFixed(4)} ₿</td>
+        <td style="color:${medColor};">${medFee} sat/vB</td>
         <td>${feeBarHtml}</td>
-        <td class="b-hash" title="${b.id}">${b.id.slice(0,20)}...${b.id.slice(-8)}</td>
+        <td class="b-hash" title="${b.id}">${b.id.slice(0,18)}...${b.id.slice(-6)}</td>
       </tr>`;
     }).join('');
-
-  } catch(e) { console.error('Blocks full page error:', e); }
+  } catch(e) { console.error('Blocks error:', e); }
 }
 
-// ═══════════════════════════════════════
-// INIT & REFRESH
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
 async function init() {
   await Promise.allSettled([
     fetchCoinGeckoMarket(),
     fetchGlobal(),
     fetchFearGreed(),
     fetchMempool(),
-    fetchBlocks(),
     loadPriceChart(90),
   ]);
 }
-
 init();
-
-// Auto-refresh intervals
 setInterval(fetchCoinGeckoMarket, 30000);
 setInterval(fetchGlobal, 60000);
 setInterval(fetchFearGreed, 300000);
 setInterval(fetchMempool, 30000);
-setInterval(fetchBlocks, 60000);
-// Refresh blocks full page if on that tab
-setInterval(() => {
-  if (document.getElementById('page-blocks').classList.contains('active')) {
-    fetchBlocksFull();
-  }
-}, 60000);
+setInterval(()=>{ if(document.getElementById('page-blocks').classList.contains('active')) fetchBlocksFull(); }, 60000);
 </script>
 </body>
 </html>
